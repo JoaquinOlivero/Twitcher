@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/golang/freetype/truetype"
 	"github.com/google/renameio"
@@ -75,10 +76,10 @@ func streamAudio() error {
 
 	// cmd.Wait()
 	// fmt.Println("ffmpeg error:", errb.String())
-	// ffmpeg -re -stream_loop -1 -thread_queue_size 4096 -i files/stream/stream.mp4  -thread_queue_size 4096 -f image2 -loop 1 -i files/stream/stream.png -filter_complex "overlay=40:20" -thread_queue_size 4096 -i "udp://127.0.0.7:1234?timeout=50000000" -c:v libx264 -c:a copy -g 66 -keyint_min 66 -force_key_frames 'expr:gte(t,n_forced*2)' -f rtsp -rtsp_transport tcp rtsp://127.0.0.1:8554:/stream
-
+	// beats10
+	// "rtmp://bue01.contribute.live-video.net/app/live_891663522_CRTo8bzjBSLxlxGs0OU9gUDZSF5v8L?bandwidthtest=true"
 	// chipibarijho and latest ffmpeg command tried.
-	// ffmpeg -stream_loop -1 -i files/stream/stream.mp4 -f image2 -loop 1 -i files/stream/stream.png -filter_complex "overlay=40:20" -thread_queue_size 4096 -i "udp://127.0.0.7:1234?timeout=50000000&overrun_nonfatal=1&fifo_size=50000000" -c:v libx264 -c:a copy -r 33 -g 66 -keyint_min 66 -force_key_frames 'expr:gte(t,n_forced*2)' -analyzeduration 0 -probesize 32 -reset_timestamps 1 -f flv "rtmp://bue01.contribute.live-video.net/app/live_198642898_h7vzj8LGGrSS3UVIkMomDHKdWEf2VA"
+	// ffmpeg -re -stream_loop -1 -i files/stream/car.mp4 -f image2 -loop 1 -i files/stream/stream.png -filter_complex "overlay=40:20" -thread_queue_size 4096 -i "udp://127.0.0.7:1234?timeout=20000000&overrun_nonfatal=1&fifo_size=50000000&pkt_size=188&buffer_size=65535" -c:v libx264 -c:a copy -r 48 -g 96 -keyint_min 96 -force_key_frames 'expr:gte(t,n_forced*2)' -analyzeduration 0 -probesize 32 -reset_timestamps 1 -fflags +discardcorrupt -f flv "rtmp://bue01.contribute.live-video.net/app/live_198642898_h7vzj8LGGrSS3UVIkMomDHKdWEf2VA"
 	// Silence as input  -f lavfi -i anullsrc --> useful to use as a silence input to send to the main ffmpeg command
 
 	for {
@@ -89,17 +90,27 @@ func streamAudio() error {
 		}
 
 		for _, song := range songs {
-
 			// Change cover
 			err := changeCover(song.Name, song.Author, song.Page, song.CoverFilename)
 			if err != nil {
 				return err
 			}
 
-			// Stream song.
-			args := []string{"-re", "-i", "files/songs/" + song.AudioFilename, "-c:a", "copy", "-f", "mp3", "udp://127.0.0.1:1234"}
+			// 2 second silence. This is needed because the main ffmpeg command needs a continuous stream of audio from "udp://127.0.0.1:1234", otherwise it throws an error.
+			args := []string{"-re", "-f", "lavfi", "-i", "anullsrc", "-f", "mpegts", "udp://127.0.0.1:1234"}
 			var errb bytes.Buffer
 			cmd := exec.Command("ffmpeg", args...)
+			cmd.Stderr = &errb
+			cmd.Start()
+
+			fmt.Println("Sleep 2 seconds.")
+			time.Sleep(2 * time.Second)
+			cmd.Process.Kill()
+			cmd.Wait()
+
+			// Stream song.
+			args = []string{"-re", "-i", "files/songs/" + song.AudioFilename, "-c:a", "copy", "-f", "mp3", "udp://127.0.0.1:1234"}
+			cmd = exec.Command("ffmpeg", args...)
 			cmd.Stderr = &errb
 			cmd.Start()
 
