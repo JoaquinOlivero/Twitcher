@@ -1,0 +1,50 @@
+To enable foreign key constraint:
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE songs (
+    page VARCHAR NOT NULL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    genre VARCHAR(255) NOT NULL,
+    author VARCHAR(255) NOT NULL,
+    release_date VARCHAR(255) NOT NULL,
+    audio_filename VARCHAR(255) NOT NULL,
+    cover_filename VARCHAR(255) NOT NULL,
+    duration REAL,
+    UNIQUE(page)
+);
+
+
+CREATE TABLE genres (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    ncsid INTEGER NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    UNIQUE(name),
+    UNIQUE(ncsid)
+);
+
+CREATE TABLE moods (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    ncsid INTEGER NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    UNIQUE(name),
+    UNIQUE(ncsid)
+);
+
+CREATE TABLE playlists (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    master INT NOT NULL
+);
+
+CREATE TABLE song_playlist (
+    song_id VARCHAR,
+    playlist_id INTEGER,
+    CONSTRAINT FK_song FOREIGN KEY (song_id) REFERENCES songs (page),
+    CONSTRAINT FK_playlist FOREIGN KEY (playlist_id) REFERENCES playlists (id)
+);
+
+SELECT 
+page
+FROM 
+songs
+INNER JOIN song_playlist ON song_playlist.song_id = songs.page
+INNER JOIN playlists ON playlists.id = 1;

@@ -1,0 +1,37 @@
+rtmp://bue01.contribute.live-video.net/app/live_198642898_h7vzj8LGGrSS3UVIkMomDHKdWEf2VA
+
+// There is no need to re-encode if the file already meets the bitrate requirements set by Twitch.
+ffmpeg -stream_loop -1 -re -i stream.mp4 -c copy -r 25 -g 50 -keyint_min 50 -force_key_frames 'expr:gte(t,n_forced*2)' -f flv "rtmp://bue01.contribute.live-video.net/app/live_198642898_h7vzj8LGGrSS3UVIkMomDHKdWEf2VA?bandwidthtest=true"
+
+// Audio conversion command
+ffmpeg -i song.mp3 -c:a aac -b:a 320k song.m4a
+
+// Video re-encoding command to absolutely target an average bitrate (5000k).
+ffmpeg -y -i road-81676.mp4 -c:v libx264 -g 50 -keyint_min 50 -force_key_frames 'expr:gte(t,n_forced*2)' -b:v 5000k -pass 1 -an -f null /dev/null && \
+ffmpeg -i road-81676.mp4 -c:v libx264 -g 50 -keyint_min 50 -force_key_frames 'expr:gte(t,n_forced*2)' -b:v 5000k  -pass 2 background-video.mp4
+
+// To merge an audio stream with a repeated video stream
+ffmpeg -stream_loop -1 -i background-video.mp4 -i song.m4a -map 0:v:0 -map 1:a:0 -shortest -c copy -g 50 -keyint_min 50 -force_key_frames 'expr:gte(t,n_forced*2)' stream.mp4
+ffmpeg -stream_loop -1 -i background-video.mp4 -i light.mp3 -map 0:v:0 -map 1:a:0 -shortest -c copy -g 50 -keyint_min 50 -force_key_frames 'expr:gte(t,n_forced*2)' stream.mp4
+
+// STREAM A FILE TO FMS AS IF IT WERE LIVE
+// With the help of FFmpeg it is possible for example to stream a pre-encoded file to FMS as if it were a live source. This can be very useful for test purpose but also to create pseudo-live channels.
+
+ffmpeg -re -i localFile.mp4 -c copy -f flv rtmp://server/live/streamName
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+To join two audio files while keeping the bitrate at 320 kb/s using ffmpeg, you can modify the command mentioned in the previous answer as follows:
+
+ffmpeg -i input1.mp3 -i input2.mp3 -filter_complex "[0:0][1:0]concat=n=2:v=0:a=1" -b:a 320k output.mp3
+
+This command uses the concat filter to join the two audio files. The n parameter specifies the number of inputs to concatenate, v is set to 0 to disable video streams, and a is set to 1 to enable audio streams.
+
+Here, the -b:a option is used to set the output audio bitrate to 320 kb/s.
+
+Make sure to replace input1.mp3 and input2.mp3 with the actual file names of the audio files you want to join, and replace output.mp3 with the desired name for the output file.
+
+Once you run the command, ffmpeg will concatenate the audio files and output a new file with the specified bitrate of 320 kb/s.
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+ffmpeg -re -stream_loop -1 -i files/stream/stream.mp4 -i "udp://127.0.0.1:23000?timeout=50000000" -f image2 -loop 1 -i files/stream/stream.png -filter_complex "overlay=40:20" -c:v libx264 -g 50 -keyint_min 50 -force_key_frames 'expr:gte(t,n_forced*2)' -f flv "rtmp://bue01.contribute.live-video.net/app/live_198642898_h7vzj8LGGrSS3UVIkMomDHKdWEf2VA?bandwidthtest=true"
