@@ -46,11 +46,9 @@ type AudioProbe struct {
 
 func main() {
 
+	twitchPtr := flag.String("twitch", "", "a string")
+
 	flag.Parse()
-	if len(flag.Args()) == 0 {
-		err := errors.New("this program needs at least one argument to run")
-		log.Fatalln(err)
-	}
 
 	if len(flag.Args()) > 1 {
 		err := errors.New("can't use more than one argument")
@@ -74,8 +72,9 @@ func main() {
 		return
 	}
 
-	if flag.Arg(0) == "stream" {
-		err := stream.Start()
+	// Twitch stream
+	if *twitchPtr != "" {
+		err := stream.Twitch(*twitchPtr)
 		if err != nil {
 			log.Fatalln(err)
 		}

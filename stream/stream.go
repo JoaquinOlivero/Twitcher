@@ -1,7 +1,6 @@
 package stream
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"image"
@@ -11,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"time"
 
 	"github.com/golang/freetype/truetype"
 	"github.com/google/renameio"
@@ -29,105 +27,92 @@ type Song struct {
 	Duration      float64
 }
 
-func Start() error {
-
-	err := streamAudio()
+func Twitch(streamUrl string) error {
+	// Create pipe to then pipe the songs inside a loop and a go routine to the stream os.Exec command.
+	pr, pw, err := os.Pipe()
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 
-	return nil
-}
+	// Infinite loop through songs.
+	go func() error {
 
-// ffmpeg -re -i "Zeli - Sharks [NCS Release].mp3" -c copy -f mp3 udp://127.0.0.1:23000
-func streamAudio() error {
-	// ffmpeg -re -stream_loop -1 -i files/stream/stream.mp4 -f image2 -loop 1 -i files/stream/stream.png -filter_complex "overlay=40:20" -i rtsp://127.0.0.1:8554/audio  -c:v libx264 -r 33 -g 66 -keyint_min 66 -force_key_frames 'expr:gte(t,n_forced*2)' -probesize 1000 -analyzeduration 1 -movflags +faststart -reset_timestamps 1 -f flv "rtmp://bue01.contribute.live-video.net/app/live_891663522_CRTo8bzjBSLxlxGs0OU9gUDZSF5v8L"
-	// ffmpeg -re -stream_loop -1 -i files/stream/stream.mp4 -f image2 -loop 1 -i files/stream/stream.png -filter_complex "overlay=40:20" -i rtsp://127.0.0.1:8554/audio  -c:v libx264 -r 33 -g 66 -keyint_min 66 -force_key_frames 'expr:gte(t,n_forced*2)' -probesize 1000 -analyzeduration 1 -movflags +faststart -reset_timestamps 1 -f rtsp -rtsp_transport tcp rtsp://127.0.0.1:8554/stream
-	// Get master playlist.
-	// songs, err := getPlaylistSongs()
-	// if err != nil {
-	// 	return err
-	// }
+		for {
 
-	// // stream using ffmpeg concurrently. This way makes it possible to change the audio track and the overlay of the livestream.
-	// args := []string{"-stream_loop", "-1", "-re", "-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", "-i", "files/stream/playlists/master/hls/master.m3u8", "-f", "rtsp", "-rtsp_transport", "tcp", "rtsp://127.0.0.1:8554/audio"}
-	// var errb bytes.Buffer
-	// cmd := exec.Command("ffmpeg", args...)
-	// cmd.Stderr = &errb
-	// cmd.Start()
-	// // -f flv "rtmp://bue01.contribute.live-video.net/app/live_198642898_h7vzj8LGGrSS3UVIkMomDHKdWEf2VA"
-	// fmt.Println(cmd.Args)
-	// // -f image2 -loop 1 -i files/stream/stream.png
-	// // Change cover.
-	// for i := 0; i <= len(songs); i++ {
-	// 	if i == len(songs) {
-	// 		i = 0
-	// 		continue
-	// 	}
-	// 	err := changeCover(songs[i].Name, songs[i].Author, songs[i].Page, songs[i].CoverFilename)
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 	}
-
-	// 	// Wait for song to finish.
-	// 	time.Sleep(time.Duration(songs[i].Duration) * time.Second)
-	// }
-
-	// cmd.Wait()
-	// fmt.Println("ffmpeg error:", errb.String())
-	// beats10
-	// "rtmp://bue01.contribute.live-video.net/app/live_891663522_CRTo8bzjBSLxlxGs0OU9gUDZSF5v8L?bandwidthtest=true"
-	// chipibarijho and latest ffmpeg command tried.
-	// ffmpeg -re -stream_loop -1 -i files/stream/car.mp4 -f image2 -loop 1 -i files/stream/stream.png -filter_complex "overlay=40:20" -thread_queue_size 4096 -i "udp://127.0.0.7:1234?timeout=20000000&overrun_nonfatal=1&fifo_size=50000000&pkt_size=188&buffer_size=65535" -c:v libx264 -c:a copy -r 48 -g 96 -keyint_min 96 -force_key_frames 'expr:gte(t,n_forced*2)' -analyzeduration 0 -probesize 32 -reset_timestamps 1 -fflags +discardcorrupt -f flv "rtmp://bue01.contribute.live-video.net/app/live_198642898_h7vzj8LGGrSS3UVIkMomDHKdWEf2VA"
-	// Silence as input  -f lavfi -i anullsrc --> useful to use as a silence input to send to the main ffmpeg command
-
-	for {
-
-		songs, err := getSongs()
-		if err != nil {
-			return err
-		}
-
-		for _, song := range songs {
-			// Change cover
-			err := changeCover(song.Name, song.Author, song.Page, song.CoverFilename)
+			songs, err := getSongs()
 			if err != nil {
 				return err
 			}
 
-			// 2 second silence. This is needed because the main ffmpeg command needs a continuous stream of audio from "udp://127.0.0.1:1234", otherwise it throws an error.
-			args := []string{"-re", "-f", "lavfi", "-i", "anullsrc", "-f", "mpegts", "udp://127.0.0.1:1234"}
-			var errb bytes.Buffer
-			cmd := exec.Command("ffmpeg", args...)
-			cmd.Stderr = &errb
-			cmd.Start()
+			for _, song := range songs {
 
-			fmt.Println("Sleep 2 seconds.")
-			time.Sleep(2 * time.Second)
-			cmd.Process.Kill()
-			cmd.Wait()
+				// Change cover
+				go changeCover(song.Name, song.Author, song.Page, song.CoverFilename)
 
-			// Stream song.
-			args = []string{"-re", "-i", "files/songs/" + song.AudioFilename, "-c:a", "copy", "-f", "mp3", "udp://127.0.0.1:1234"}
-			cmd = exec.Command("ffmpeg", args...)
-			cmd.Stderr = &errb
-			cmd.Start()
+				// Command that pipes song from the loop.
+				cmd := exec.Command("ffmpeg",
+					"-re", "-hide_banner",
+					"-i", "files/songs/"+song.AudioFilename,
+					"-vn",
+					"-acodec", "copy",
+					"-f", "mp3",
+					"-",
+				)
 
-			fmt.Println(cmd.Args)
+				cmd.Stderr = os.Stderr // bind log stream to stderr
+				cmd.Stdout = pw        // Pipe the output of this first ffmpeg instance, to later be used in the second instance.
 
-			// Change cover
-			// time.Sleep(1 * time.Second)
-			// err := changeCover(song.Name, song.Author, song.Page, song.CoverFilename)
-			// if err != nil {
-			// 	return err
-			// }
+				err := cmd.Start()
+				if err != nil {
+					return err
+				}
 
-			cmd.Wait()
-			// fmt.Println("ffmpeg error:", errb.String())
+				err = cmd.Wait()
+				if err != nil {
+					return err
+				}
+
+			}
 		}
 
+	}()
+
+	// Start stream
+	cmd := exec.Command("ffmpeg",
+		"-fflags", "+igndts",
+		"-re",
+		"-stream_loop", "-1",
+		"-i", "files/stream/sunset-720p.mp4",
+		"-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", "-filter_complex", "overlay=5:5",
+		"-err_detect", "explode",
+		"-thread_queue_size", "4096", "-i", "pipe:0",
+		"-c:v", "libx264",
+		"-c:a", "copy",
+		"-b:a", "320k",
+		"-r", "25",
+		"-g", "50",
+		"-keyint_min", "50", "-force_key_frames", "expr:gte(t,n_forced*2)",
+		"-analyzeduration", "0", "-probesize", "32", "-reset_timestamps", "1",
+		"-fflags", "+genpts",
+		"-flags", "+global_header",
+		"-f", "flv", streamUrl,
+	)
+
+	cmd.Stderr = os.Stderr // bind log stream to stderr
+
+	cmd.Stdin = pr // Stdout pipe from the songs ffmpeg instance. Piped into the Stdin of the second ffmpeg instance.
+
+	err = cmd.Start()
+	if err != nil {
+		return err
 	}
+
+	err = cmd.Wait()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func getSongs() ([]Song, error) {
@@ -161,46 +146,7 @@ func getSongs() ([]Song, error) {
 	return songs, nil
 }
 
-// func getPlaylistSongs() ([]Song, error) {
-// 	// Connect to db.
-// 	db, err := sql.Open("sqlite3", "data.db")
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	defer db.Close()
-
-// 	// Get master playlist id.
-// 	var playlistId int
-// 	err = db.QueryRow("SELECT id FROM playlists WHERE master = 1").Scan(&playlistId)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// Retrieve the songs from the playlist.
-// 	var songs []Song
-
-// 	rows, err := db.Query("SELECT page, name, author, audio_filename, cover_filename, duration FROM songs INNER JOIN song_playlist ON song_playlist.song_id = songs.page INNER JOIN playlists ON playlists.id = $1;", playlistId)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer rows.Close()
-
-// 	for rows.Next() {
-// 		var song Song
-// 		err = rows.Scan(&song.Page, &song.Name, &song.Author, &song.AudioFilename, &song.CoverFilename, &song.Duration)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		songs = append(songs, song)
-// 	}
-
-// 	return songs, nil
-// }
-
 func changeCover(name, author, page, cover string) error {
-
 	// Open the original image
 	file, err := os.Open("files/covers/" + cover)
 	if err != nil {
