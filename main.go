@@ -3,6 +3,7 @@ package main
 import (
 	"Twitcher/playlist"
 	"Twitcher/stream"
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -296,7 +298,13 @@ func saveSong(song SongDetails) error {
 		fmt.Println(err)
 	}
 
-	_, err = db.Exec("INSERT INTO songs (page, name, genre, author, release_date, audio_filename, cover_filename, duration) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", song.Page, song.Name, song.Genre, song.Author, song.ReleaseDate, audioFilename, coverFilename, duration)
+	// Get audio bitrate.
+	bitrate, err := getAudioBitrate("PLEEG - Voyage [NCS Release].mp3")
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = db.Exec("INSERT INTO songs (page, name, genre, author, release_date, audio_filename, cover_filename, duration, bitrate) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)", song.Page, song.Name, song.Genre, song.Author, song.ReleaseDate, audioFilename, coverFilename, duration, bitrate)
 	if err != nil {
 		return err
 	}
@@ -378,4 +386,34 @@ func getAudioLength(filename string) (int64, error) {
 	audioLength := samples / int64(d.SampleRate()) // Audio length in seconds.
 
 	return audioLength, nil
+}
+
+func getAudioBitrate(filename string) (int, error) {
+	var bitrate int
+	// Get audio bitrate.
+	cmd := exec.Command("ffprobe", "-i", "files/songs/"+filename)
+
+	stdErr, _ := cmd.StderrPipe()
+
+	cmd.Start()
+
+	// Scan line by line stderr for ffprobe result. Get line that contains "bitrate" and " kb/s"
+	scanner := bufio.NewScanner(stdErr)
+	for scanner.Scan() {
+		m := scanner.Text()
+		if strings.Contains(m, "bitrate") && strings.Contains(m, " kb/s") {
+			_, bitrateLine, _ := strings.Cut(m, "bitrate: ")
+			bitrateLine, _ = strings.CutSuffix(bitrateLine, " kb/s")
+			bitrateInt, err := strconv.Atoi(bitrateLine)
+			if err != nil {
+				panic(err)
+			}
+
+			bitrate = bitrateInt
+		}
+
+	}
+	cmd.Wait()
+
+	return bitrate, nil
 }
