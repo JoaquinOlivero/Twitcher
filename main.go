@@ -160,19 +160,27 @@ func crawlByMood(moodId int) error {
 			song.Genre = strings.Split(e.ChildAttr("td span.genre", "title"), ",")[0]
 			song.Name = e.ChildText("td a p")
 			song.Author = e.ChildText("td span")
-			song.DownloadLink = "https://ncs.io/track/download/" + e.ChildAttr("td a", "data-tid")
 
 			selection := e.DOM
 			childNodes := selection.Children().Nodes
 
 			song.ReleaseDate = childNodes[5].FirstChild.Data
 
-			song.CoverSrc = crawlSongPage(song.Page, c)
+			// Crawl for the download link and cover image on the song's individual page.
+			coverSrc, downloadLink := crawlSongPage(song.Page, c)
 
-			// songs = append(songs, song)
-			err := saveSong(song)
-			if err != nil {
-				fmt.Println(err)
+			song.CoverSrc = coverSrc
+			if downloadLink != "" {
+				song.DownloadLink = downloadLink
+			} else {
+				song.DownloadLink = "https://ncs.io/track/download/" + e.ChildAttr("td a", "data-tid")
+			}
+
+			if song.CoverSrc != "" && song.DownloadLink != "" {
+				err := saveSong(song)
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
 		}
 	})
@@ -209,21 +217,32 @@ func checkTags(moodId int, tag string) bool {
 		case "Drum & Bass", "Dubstep", "Future House":
 			return false
 		}
+	case 15: // Peaceful
+		switch tag {
+		case "Drum & Bass", "Dubstep", "Future House", "Melodic Dubstep", "Drumstep":
+			return false
+		}
 	}
 
 	return true
 }
 
-func crawlSongPage(url string, c *colly.Collector) string {
-	var imageUrl string
+func crawlSongPage(url string, c *colly.Collector) (coverSrc, downloadLink string) {
+	var cover, download string
 
 	c.OnHTML("div.site-bg > img", func(e *colly.HTMLElement) {
-		imageUrl = e.Attr("src")
+		cover = e.Attr("src")
+	})
+
+	c.OnHTML("a", func(e *colly.HTMLElement) {
+		if e.Attr("data-label") == "freedownloads" {
+			download = e.Attr("href")
+		}
 	})
 
 	c.Visit(url)
 
-	return imageUrl
+	return cover, download
 }
 
 // Todo: handle errors in this function.
@@ -360,15 +379,3 @@ func getAudioLength(filename string) (int64, error) {
 
 	return audioLength, nil
 }
-
-// Genres --> skip
-// 11 Indie
-// 10 House
-// 12 Melodic Dubstep
-// 2 Chill --> skip if Dark
-
-// Moods --> skip
-// 13 Laid Back ---> skip if Dark | Dubstep  tag
-// 17 Relaxing ---> skip if Drum & Bass | Dubstep | Trap | Future House
-// 19 Romantic
-// INSERT INTO moods (ncsid, name) VALUES(19, 'romantic');
