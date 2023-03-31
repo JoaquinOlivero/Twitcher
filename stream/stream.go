@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/golang/freetype/truetype"
 	"github.com/google/renameio"
@@ -25,16 +26,17 @@ type Song struct {
 	AudioFilename string
 	CoverFilename string
 	Duration      float64
+	Bitrate       int
 }
 
 func Twitch(streamUrl string) error {
-	// Create pipe to then pipe the songs inside a loop and a go routine to the stream os.Exec command.
+	// Pipe the songs to the stdin of the ffmpeg instance streaming to Twitch.
 	pr, pw, err := os.Pipe()
 	if err != nil {
 		return err
 	}
 
-	// Infinite loop through songs.
+	// Infinite loop through songs and writing the output of this ffmpeg instance to the "pw" pipe.
 	go func() error {
 
 		for {
@@ -44,63 +46,53 @@ func Twitch(streamUrl string) error {
 				return err
 			}
 
-			for _, song := range songs {
-
+			for i := 0; i < len(songs); i++ {
 				// Change cover
-				go changeCover(song.Name, song.Author, song.Page, song.CoverFilename)
+				go changeCover(songs[i].Name, songs[i].Author, songs[i].Page, songs[i].CoverFilename)
 
-				// Command that pipes song from the loop.
+				// Command that pipes song from the loop to "pw".
 				cmd := exec.Command("ffmpeg",
 					"-re", "-hide_banner",
-					"-i", "files/songs/"+song.AudioFilename,
-					"-vn",
+					"-i", "files/songs/"+songs[i].AudioFilename,
+					"-map", "0:a",
 					"-acodec", "copy",
+					"-map_metadata", "-1",
+					"-fflags", "+bitexact", "-flags:v", "+bitexact", "-flags:a", "+bitexact",
 					"-f", "mp3",
 					"-",
 				)
 
-				cmd.Stderr = os.Stderr // bind log stream to stderr
-				cmd.Stdout = pw        // Pipe the output of this first ffmpeg instance, to later be used in the second instance.
+				cmd.Stdout = pw // Pipe the output of this first ffmpeg instance, to later be used in the second ffmpeg instance.
 
-				err := cmd.Start()
-				if err != nil {
-					return err
-				}
+				cmd.Run()
 
-				err = cmd.Wait()
-				if err != nil {
-					return err
-				}
+				continue
 
 			}
 		}
 
 	}()
 
-	// Start stream
+	// Stream to Twitch's rtmp server.
+	// This ffmpeg instance takes the "pr" pipe as stdin.
 	cmd := exec.Command("ffmpeg",
-		"-fflags", "+igndts",
 		"-re",
 		"-stream_loop", "-1",
 		"-i", "files/stream/sunset-720p.mp4",
-		"-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", "-filter_complex", "overlay=5:5",
-		"-err_detect", "explode",
+		"-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", "-filter_complex", "[0:v]overlay=5:10",
 		"-thread_queue_size", "4096", "-i", "pipe:0",
 		"-c:v", "libx264",
-		"-c:a", "copy",
-		"-b:a", "320k",
+		"-acodec", "aac",
 		"-r", "25",
 		"-g", "50",
 		"-keyint_min", "50", "-force_key_frames", "expr:gte(t,n_forced*2)",
-		"-analyzeduration", "0", "-probesize", "32", "-reset_timestamps", "1",
-		"-fflags", "+genpts",
-		"-flags", "+global_header",
-		"-f", "flv", streamUrl,
+		"-use_wallclock_as_timestamps", "1",
+		"-f", "flv", "-flvflags", "no_duration_filesize", streamUrl,
 	)
 
-	cmd.Stderr = os.Stderr // bind log stream to stderr
+	cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
 
-	cmd.Stdin = pr // Stdout pipe from the songs ffmpeg instance. Piped into the Stdin of the second ffmpeg instance.
+	cmd.Stdin = pr // Stdout pipe from the looped songs ffmpeg instance. Piped into the Stdin of the second ffmpeg instance.
 
 	err = cmd.Start()
 	if err != nil {
@@ -127,7 +119,7 @@ func getSongs() ([]Song, error) {
 	// Retrieve available songs.
 	var songs []Song
 
-	rows, err := db.Query("SELECT page, name, author, audio_filename, cover_filename FROM songs ORDER BY RANDOM()")
+	rows, err := db.Query("SELECT page, name, author, audio_filename, cover_filename, bitrate FROM songs ORDER BY RANDOM()")
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +127,7 @@ func getSongs() ([]Song, error) {
 
 	for rows.Next() {
 		var song Song
-		err = rows.Scan(&song.Page, &song.Name, &song.Author, &song.AudioFilename, &song.CoverFilename)
+		err = rows.Scan(&song.Page, &song.Name, &song.Author, &song.AudioFilename, &song.CoverFilename, &song.Bitrate)
 		if err != nil {
 			return nil, err
 		}
@@ -147,6 +139,7 @@ func getSongs() ([]Song, error) {
 }
 
 func changeCover(name, author, page, cover string) error {
+	time.Sleep(3 * time.Second)
 	// Open the original image
 	file, err := os.Open("files/covers/" + cover)
 	if err != nil {
@@ -163,13 +156,13 @@ func changeCover(name, author, page, cover string) error {
 	}
 
 	// Resize the image to a new width of 400 pixels
-	newWidth := 180
-	newHeight := 180
-	resized := resize.Resize(180, 180, img, resize.Lanczos2)
+	newWidth := 250
+	newHeight := 250
+	resized := resize.Resize(uint(newWidth), uint(newHeight), img, resize.Lanczos2)
 
 	// Create a new image with enough space to add text to the right
-	textWidth := 1000
-	textHeight := newHeight
+	textWidth := 1280
+	textHeight := 720
 	withText := image.NewRGBA(image.Rect(0, 0, newWidth+textWidth, textHeight))
 	draw.Draw(withText, withText.Bounds(), resized, image.Point{0, 0}, draw.Src)
 
@@ -206,7 +199,8 @@ func changeCover(name, author, page, cover string) error {
 	// Add ncs.io link
 	text = "https://ncs.io/" + filepath.Base(page)
 	fontSize = 15.0
-	textY = 170
+	textX = 5
+	textY = 700
 	if err := addText(withText, text, fontData, fontSize, textX, textY, textColor); err != nil {
 		fmt.Println("Error adding text:", err)
 		return err
