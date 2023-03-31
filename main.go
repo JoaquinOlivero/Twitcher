@@ -224,6 +224,11 @@ func checkTags(moodId int, tag string) bool {
 		case "Drum & Bass", "Dubstep", "Future House", "Melodic Dubstep", "Drumstep":
 			return false
 		}
+	case 3, 4: // Dreamy and Epic
+		switch tag {
+		case "Drum & Bass", "Dubstep", "Future House", "Melodic Dubstep", "Drumstep", "Future Bass", "Bass House", "Glitch Hop", "Hardstyle", "Weird", "Bass", "Trap", "Sexy", "EDM", "House", "N/A", "Phonk":
+			return false
+		}
 	}
 
 	return true
