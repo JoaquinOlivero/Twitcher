@@ -1,7 +1,6 @@
 package main
 
 import (
-	"Twitcher/playlist"
 	"Twitcher/stream"
 	"bufio"
 	"errors"
@@ -20,7 +19,6 @@ import (
 	"database/sql"
 
 	"github.com/gocolly/colly/v2"
-	"github.com/hajimehoshi/go-mp3"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -82,12 +80,6 @@ func main() {
 		}
 	}
 
-	if flag.Arg(0) == "playlist" {
-		err := playlist.Create()
-		if err != nil {
-			log.Fatalln(err)
-		}
-	}
 }
 
 func getMoods() ([]Mood, error) {
@@ -285,31 +277,26 @@ func saveSong(song SongDetails) error {
 
 	defer db.Close()
 
-	// Download audio file.
-	audioFilename, err := downloadFile(song.DownloadLink, "files/songs")
+	// Convert audio file to aac with ffmpeg.
+	// Get audio bitrate.
+	bitrate, err := getAudioBitrate(song.DownloadLink)
+	if err != nil {
+		return err
+	}
+
+	// The download link can be used as the input in ffmpeg.
+	audioFilename, err := downloadSong(song.DownloadLink, song.Name, bitrate)
 	if err != nil {
 		return err
 	}
 
 	// Download cover image.
-	coverFilename, err := downloadFile(song.CoverSrc, "files/covers")
+	coverFilename, err := downloadCover(song.CoverSrc, "files/covers")
 	if err != nil {
 		return err
 	}
 
-	// Get song duration.
-	duration, err := getAudioLength(audioFilename)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	// Get audio bitrate.
-	bitrate, err := getAudioBitrate("PLEEG - Voyage [NCS Release].mp3")
-	if err != nil {
-		panic(err)
-	}
-
-	_, err = db.Exec("INSERT INTO songs (page, name, genre, author, release_date, audio_filename, cover_filename, duration, bitrate) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)", song.Page, song.Name, song.Genre, song.Author, song.ReleaseDate, audioFilename, coverFilename, duration, bitrate)
+	_, err = db.Exec("INSERT INTO songs (page, name, genre, author, release_date, audio_filename, cover_filename, bitrate) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", song.Page, song.Name, song.Genre, song.Author, song.ReleaseDate, audioFilename, coverFilename, bitrate)
 	if err != nil {
 		return err
 	}
@@ -317,8 +304,21 @@ func saveSong(song SongDetails) error {
 	return nil
 }
 
-func downloadFile(url, saveDir string) (string, error) {
+func downloadSong(url, name string, bitrate int) (string, error) {
+	// Convert song from download link to m4a. (aac)
+	cmd := exec.Command("ffmpeg", "-hide_banner", "-i", url, "-map", "a:0", "-b:a", strconv.Itoa(bitrate)+"k", "files/songs/"+name+".m4a", "-y")
+	cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
 
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+
+	filename := name + ".m4a"
+	return filename, nil
+}
+
+func downloadCover(url, saveDir string) (string, error) {
 	// Make HTTP GET request to the URL
 	resp, err := http.Get(url)
 	if err != nil {
@@ -340,13 +340,8 @@ func downloadFile(url, saveDir string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		// For some reason some audio files from ncs.io don't have an extension.
-		if filepath.Ext(params["filename"]) != ".mp3" {
-			filename = params["filename"] + ".mp3"
 
-		} else {
-			filename = params["filename"]
-		}
+		filename = params["filename"]
 	}
 
 	// If the filename is still empty, extract it from the URL
@@ -373,30 +368,10 @@ func downloadFile(url, saveDir string) (string, error) {
 	return filename, nil
 }
 
-func getAudioLength(filename string) (int64, error) {
-	f, err := os.Open("files/songs/" + filename)
-	if err != nil {
-		return 0, err
-	}
-	defer f.Close()
-
-	d, err := mp3.NewDecoder(f)
-	if err != nil {
-		return 0, err
-	}
-	f.Close()
-
-	const sampleSize = 4                           // From documentation.
-	samples := d.Length() / sampleSize             // Number of samples.
-	audioLength := samples / int64(d.SampleRate()) // Audio length in seconds.
-
-	return audioLength, nil
-}
-
-func getAudioBitrate(filename string) (int, error) {
+func getAudioBitrate(url string) (int, error) {
 	var bitrate int
 	// Get audio bitrate.
-	cmd := exec.Command("ffprobe", "-i", "files/songs/"+filename)
+	cmd := exec.Command("ffprobe", "-i", url)
 
 	stdErr, _ := cmd.StderrPipe()
 
@@ -419,6 +394,11 @@ func getAudioBitrate(filename string) (int, error) {
 
 	}
 	cmd.Wait()
+
+	if bitrate > 320 {
+		err := errors.New("bitrate is higher than 320kbps")
+		return 0, err
+	}
 
 	return bitrate, nil
 }
