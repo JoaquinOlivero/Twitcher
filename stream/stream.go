@@ -1,12 +1,14 @@
 package stream
 
 import (
+	"bufio"
 	"database/sql"
 	"fmt"
 	"image"
 	"image/draw"
 	"image/jpeg"
 	"image/png"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,58 +38,123 @@ func Twitch(streamUrl string) error {
 		return err
 	}
 
-	// Infinite loop through songs and writing the output of this ffmpeg instance to the "pw" pipe.
+	// Infinite loop through songs and buffering the audio files in real-time to the "pw" pipe.
 	go func() error {
 
 		for {
 
+			// Get songs from the database in random order.
 			songs, err := getSongs()
 			if err != nil {
 				return err
 			}
 
-			for i := 0; i < len(songs); i++ {
+			// Loop through the songs in real-time.
+			for _, song := range songs {
+
+				// 2 second silent audio.
+				anullsrc, err := os.Open("files/songs/silence.mp3")
+				if err != nil {
+					return err
+				}
+
+				defer anullsrc.Close()
+
+				// Buffer with a size corresponding to the sample rate of the audio file which is 44100 Hz. All audio files have been normalize to 44100 Hz.
+				r := bufio.NewReader(anullsrc)
+				buffer := make([]byte, 44100)
+
+				for {
+					n, err := io.ReadFull(r, buffer[:cap(buffer)])
+					buffer = buffer[:n]
+
+					if err != nil {
+						// This is an expected EOF error because it's thrown when no more input is available and it's been made to signal a graceful end of input.
+						// Basically the file has been completely read and therefore everything is OK.
+						if err == io.EOF {
+							break
+						}
+
+						// Unlike the previous error, an unexpected EOF means that an EOF was encountered in the middle of reading a fixed-size block or data structure.
+						if err != io.ErrUnexpectedEOF {
+							fmt.Fprintln(os.Stderr, err)
+							break
+						}
+					}
+
+					// process buf
+					_, err = pw.Write(buffer)
+					if err != nil {
+						return err
+					}
+
+				}
+				anullsrc.Close()
+
 				// Change cover
-				go changeCover(songs[i].Name, songs[i].Author, songs[i].Page, songs[i].CoverFilename)
+				go changeCover(song.Name, song.Author, song.Page, song.CoverFilename)
 
-				// Command that pipes song from the loop to "pw".
-				cmd := exec.Command("ffmpeg",
-					"-re", "-hide_banner",
-					"-i", "files/songs/"+songs[i].AudioFilename,
-					"-map", "0:a",
-					"-acodec", "copy",
-					"-map_metadata", "-1",
-					"-fflags", "+bitexact", "-flags:v", "+bitexact", "-flags:a", "+bitexact",
-					"-f", "mp3",
-					"-",
-				)
+				// Buffer audio file in real-time to pipe.
+				file, err := os.Open("files/songs/" + song.AudioFilename)
+				if err != nil {
+					return err
+				}
+				defer file.Close()
 
-				cmd.Stdout = pw // Pipe the output of this first ffmpeg instance, to later be used in the second ffmpeg instance.
+				// Buffer with a size corresponding to the sample rate of the audio file which is 44100 Hz. All audio files have been normalize to 44100 Hz.
+				r = bufio.NewReader(file)
+				buffer = make([]byte, 44100)
 
-				cmd.Run()
+				for {
+					n, err := io.ReadFull(r, buffer[:cap(buffer)])
+					buffer = buffer[:n]
 
-				continue
+					if err != nil {
+						// This is an expected EOF error because it's thrown when no more input is available and it's been made to signal a graceful end of input.
+						// Basically the file has been completely read and therefore everything is OK.
+						if err == io.EOF {
+							break
+						}
+
+						// Unlike the previous error, an unexpected EOF means that an EOF was encountered in the middle of reading a fixed-size block or data structure.
+						if err != io.ErrUnexpectedEOF {
+							fmt.Fprintln(os.Stderr, err)
+							break
+						}
+					}
+
+					// process buf
+					_, err = pw.Write(buffer)
+					if err != nil {
+						return err
+					}
+
+				}
+				file.Close()
 
 			}
+
+			fmt.Println("Songs loop ending. Starting a new one")
 		}
 
 	}()
 
+	time.Sleep(1 * time.Second)
+
 	// Stream to Twitch's rtmp server.
 	// This ffmpeg instance takes the "pr" pipe as stdin.
 	cmd := exec.Command("ffmpeg",
+		"-hide_banner",
 		"-re",
 		"-stream_loop", "-1",
 		"-i", "files/stream/sunset-720p.mp4",
-		"-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", "-filter_complex", "[0:v]overlay=5:10",
-		"-thread_queue_size", "4096", "-i", "pipe:0",
+		"-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", "-filter_complex", "overlay=5:10",
+		"-i", "pipe:0",
 		"-c:v", "libx264",
-		"-acodec", "aac",
-		"-r", "25",
+		"-c:a", "copy",
 		"-g", "50",
 		"-keyint_min", "50", "-force_key_frames", "expr:gte(t,n_forced*2)",
-		"-use_wallclock_as_timestamps", "1",
-		"-f", "flv", "-flvflags", "no_duration_filesize", streamUrl,
+		"-f", "flv", streamUrl,
 	)
 
 	cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
@@ -139,7 +206,6 @@ func getSongs() ([]Song, error) {
 }
 
 func changeCover(name, author, page, cover string) error {
-	time.Sleep(3 * time.Second)
 	// Open the original image
 	file, err := os.Open("files/covers/" + cover)
 	if err != nil {
@@ -217,7 +283,8 @@ func changeCover(name, author, page, cover string) error {
 		fmt.Println("Error encoding file:", err)
 		return err
 	}
-	file.Close()
+
+	time.Sleep(2 * time.Second)
 
 	overlay, err := os.ReadFile("files/stream/next.png")
 	if err != nil {
