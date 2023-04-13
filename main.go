@@ -39,9 +39,8 @@ type Mood struct {
 }
 
 type AudioProbe struct {
-	Format struct {
-		Duration string `json:"duration"`
-	}
+	Bitrate    int
+	SampleRate int
 }
 
 func main() {
@@ -277,26 +276,25 @@ func saveSong(song SongDetails) error {
 
 	defer db.Close()
 
-	// Convert audio file to aac with ffmpeg.
-	// Get audio bitrate.
-	bitrate, err := getAudioBitrate(song.DownloadLink)
+	// Get audio bitrate and sample rate.
+	audioFileData, err := audioData(song.DownloadLink)
 	if err != nil {
 		return err
 	}
 
-	// The download link can be used as the input in ffmpeg.
-	audioFilename, err := downloadSong(song.DownloadLink, song.Name, bitrate)
+	// Download audio file.
+	audioFilename, err := downloadSong(song.DownloadLink, song.Name, song.Author, audioFileData.Bitrate, audioFileData.SampleRate)
 	if err != nil {
 		return err
 	}
 
 	// Download cover image.
-	coverFilename, err := downloadCover(song.CoverSrc, "files/covers")
+	coverFilename, err := downloadFile(song.CoverSrc, "files/covers")
 	if err != nil {
 		return err
 	}
 
-	_, err = db.Exec("INSERT INTO songs (page, name, genre, author, release_date, audio_filename, cover_filename, bitrate) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", song.Page, song.Name, song.Genre, song.Author, song.ReleaseDate, audioFilename, coverFilename, bitrate)
+	_, err = db.Exec("INSERT INTO songs (page, name, genre, author, release_date, audio_filename, cover_filename, bitrate) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", song.Page, song.Name, song.Genre, song.Author, song.ReleaseDate, audioFilename, coverFilename, audioFileData.Bitrate)
 	if err != nil {
 		return err
 	}
@@ -304,21 +302,33 @@ func saveSong(song SongDetails) error {
 	return nil
 }
 
-func downloadSong(url, name string, bitrate int) (string, error) {
-	// Convert song from download link to m4a. (aac)
-	cmd := exec.Command("ffmpeg", "-hide_banner", "-i", url, "-map", "a:0", "-b:a", strconv.Itoa(bitrate)+"k", "files/songs/"+name+".m4a", "-y")
-	cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
+func downloadSong(url, name, author string, bitrate, sampleRate int) (string, error) {
+	// Download song using ffmpeg. This download method will check that the audio file is not corrupted. Also it'll change the sample rate to 44.1 kHz if needed.
+	if sampleRate == 44100 {
+		cmd := exec.Command("ffmpeg", "-hide_banner", "-i", url, "-map", "a:0", "-b:a", strconv.Itoa(bitrate)+"k", "files/songs/"+author+" - "+name+".mp3", "-y")
+		cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
 
-	err := cmd.Run()
-	if err != nil {
-		return "", err
+		err := cmd.Run()
+		if err != nil {
+			return "", err
+		}
+
+	} else {
+		cmd := exec.Command("ffmpeg", "-hide_banner", "-i", url, "-map", "a:0", "-b:a", strconv.Itoa(bitrate)+"k", "-af", "aresample=resampler=soxr", "-ar", "44100", "files/songs/"+author+" - "+name+".mp3", "-y")
+		cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
+
+		err := cmd.Run()
+		if err != nil {
+			return "", err
+		}
+
 	}
 
-	filename := name + ".m4a"
+	filename := author + " - " + name + ".mp3"
 	return filename, nil
 }
 
-func downloadCover(url, saveDir string) (string, error) {
+func downloadFile(url, saveDir string) (string, error) {
 	// Make HTTP GET request to the URL
 	resp, err := http.Get(url)
 	if err != nil {
@@ -368,37 +378,51 @@ func downloadCover(url, saveDir string) (string, error) {
 	return filename, nil
 }
 
-func getAudioBitrate(url string) (int, error) {
-	var bitrate int
-	// Get audio bitrate.
-	cmd := exec.Command("ffprobe", "-i", url)
+func audioData(file string) (AudioProbe, error) {
+	var audioData AudioProbe
 
-	stdErr, _ := cmd.StderrPipe()
+	// Get sampel rate.
+	cmd := exec.Command("ffprobe", "-hide_banner", "-select_streams", "a", "-show_streams", file)
+
+	stdOut, _ := cmd.StdoutPipe()
 
 	cmd.Start()
 
-	// Scan line by line stderr for ffprobe result. Get line that contains "bitrate" and " kb/s"
-	scanner := bufio.NewScanner(stdErr)
+	// Scan line by line stderr for ffprobe result. Get line that contains "sample_rate" and " bit_rate"
+	scanner := bufio.NewScanner(stdOut)
 	for scanner.Scan() {
 		m := scanner.Text()
-		if strings.Contains(m, "bitrate") && strings.Contains(m, " kb/s") {
-			_, bitrateLine, _ := strings.Cut(m, "bitrate: ")
-			bitrateLine, _ = strings.CutSuffix(bitrateLine, " kb/s")
-			bitrateInt, err := strconv.Atoi(bitrateLine)
+
+		// Get sample rate
+		if strings.HasPrefix(m, "sample_rate") {
+			_, sampleRateLine, _ := strings.Cut(m, "sample_rate=")
+			sampleRateInt, err := strconv.Atoi(sampleRateLine)
 			if err != nil {
-				panic(err)
+				return audioData, err
 			}
 
-			bitrate = bitrateInt
+			audioData.SampleRate = sampleRateInt
+		}
+
+		// Get bitrate
+		if strings.HasPrefix(m, "bit_rate") {
+			_, bitrateLine, _ := strings.Cut(m, "bit_rate=")
+			bitrateInt, err := strconv.Atoi(bitrateLine)
+			if err != nil {
+				return audioData, err
+			}
+
+			audioData.Bitrate = bitrateInt
 		}
 
 	}
-	cmd.Wait()
 
-	if bitrate > 320 {
-		err := errors.New("bitrate is higher than 320kbps")
-		return 0, err
+	if audioData.Bitrate > 400000 {
+		err := errors.New("bitrate is higher than 400kbps")
+		return audioData, err
 	}
 
-	return bitrate, nil
+	cmd.Wait()
+
+	return audioData, nil
 }
