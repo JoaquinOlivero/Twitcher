@@ -2,6 +2,7 @@ package main
 
 import (
 	"Twitcher/stream"
+	"Twitcher/twitchApi"
 	"bufio"
 	"errors"
 	"flag"
@@ -69,6 +70,39 @@ func main() {
 		}
 
 		return
+	}
+
+	// Save client id and client secret to database. Ask user for input.
+	if flag.Arg(0) == "api" {
+		scanner := bufio.NewScanner(os.Stdin)
+
+		// Get Twitch's username
+		fmt.Print("Enter your Twitch's username: ")
+		scanner.Scan()
+		username := scanner.Text()
+
+		// Get client id from user input.
+		fmt.Print("Enter your client id: ")
+		scanner.Scan()
+		clientId := scanner.Text()
+
+		// Get secret from user input.
+		fmt.Print("Enter your secret: ")
+		scanner.Scan()
+		secret := scanner.Text()
+
+		fmt.Println("Go to: https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=" + clientId + "&redirect_uri=http://localhost:9696&scope=moderator%3Aread%3Afollowers+channel%3Aread%3Asubscriptions+user%3Aread%3Aemail")
+
+		// Get code from user input.
+		fmt.Printf("Enter your code: ")
+		scanner.Scan()
+		code := scanner.Text()
+
+		err := twitchApi.SaveClient(username, clientId, secret, code)
+		if err != nil {
+			log.Println(err)
+			panic(err)
+		}
 	}
 
 	// Twitch stream
