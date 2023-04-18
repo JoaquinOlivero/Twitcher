@@ -13,6 +13,11 @@ require (
 )
 
 require (
+	github.com/klauspost/compress v1.10.3 // indirect
+	nhooyr.io/websocket v1.8.7 // indirect
+)
+
+require (
 	github.com/PuerkitoBio/goquery v1.5.1 // indirect
 	github.com/andybalholm/cascadia v1.2.0 // indirect
 	github.com/antchfx/htmlquery v1.2.3 // indirect
