@@ -3,6 +3,7 @@ package main
 import (
 	"Twitcher/stream"
 	"Twitcher/twitchApi"
+	// "Twitcher/twitchApi"
 	"bufio"
 	"errors"
 	"flag"

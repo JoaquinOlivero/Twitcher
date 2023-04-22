@@ -114,8 +114,6 @@ func SaveClient(username, clientId, secret, code string) error {
 		return err
 	}
 
-	// resp.Body.Close()
-
 	// Get user id from Twitch
 	type TwitchUser struct {
 		Id string `json:"id"`
@@ -156,8 +154,6 @@ func SaveClient(username, clientId, secret, code string) error {
 	if err != nil {
 		return err
 	}
-
-	// resp.Body.Close()
 
 	// Connect to db and create user with corresponding data.
 	db, err := sql.Open("sqlite3", "data.db")
