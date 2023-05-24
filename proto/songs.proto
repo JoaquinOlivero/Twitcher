@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package service;
+
+option go_package = "./pb";
+
+service SongsManagement {
+    rpc CreatePlaylist (Empty) returns (Playlist) {}
+}
+
+message Song {
+    string name = 1;
+    string page = 2;
+    string author = 3;
+    string audio = 4;
+    string cover = 5;
+    int32 bitrate = 6;
+}
+
+message Playlist {
+    repeated Song songs = 1;
+}
+
+message Empty {
+
+}
+
+// protoc --go_out=./api/ --go-grpc_out=./api/  proto/songs.proto

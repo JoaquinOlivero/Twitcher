@@ -6,3 +6,5 @@
 *.webm
 *.txt
 *.db
+src/node_modules
+src/.next

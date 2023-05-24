@@ -1,9 +1,12 @@
 package main
 
 import (
+	"Twitcher/pb"
+	service "Twitcher/services"
 	"Twitcher/stream"
 	"Twitcher/twitchApi"
-	// "Twitcher/twitchApi"
+	"net"
+
 	"bufio"
 	"errors"
 	"flag"
@@ -22,6 +25,7 @@ import (
 
 	"github.com/gocolly/colly/v2"
 	_ "github.com/mattn/go-sqlite3"
+	"google.golang.org/grpc"
 )
 
 type SongDetails struct {
@@ -71,6 +75,31 @@ func main() {
 		}
 
 		return
+	}
+
+	if flag.Arg(0) == "grpc" {
+
+		go func() {
+			http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("files/covers"))))
+			if err := http.ListenAndServe(":9001", nil); err != nil {
+				log.Fatal("ListenAndServe: ", err)
+			}
+		}()
+
+		lis, err := net.Listen("tcp", ":9000")
+		if err != nil {
+			log.Fatalf("Failed to listen on port 9000: %v", err)
+		}
+
+		grpcServer := grpc.NewServer()
+
+		// Register service methods
+		pb.RegisterSongsManagementServer(grpcServer, &service.SongsManagementServer{})
+
+		log.Printf("gRPC server listening at %v", lis.Addr())
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("Failed to serve on port 9000: %v", err)
+		}
 	}
 
 	// Save client id and client secret to database. Ask user for input.

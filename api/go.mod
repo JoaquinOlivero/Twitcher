@@ -9,12 +9,15 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/sacOO7/gowebsocket v0.0.0-20221109081133-70ac927be105
+	google.golang.org/grpc v1.55.0
 
 )
 
 require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/sacOO7/go-logger v0.0.0-20180719173527-9ac9add5a50d // indirect
+	golang.org/x/sys v0.8.0 // indirect
+	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect
 )
 
 require (
@@ -25,7 +28,7 @@ require (
 	github.com/antchfx/xpath v1.2.4 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/protobuf v1.5.3
 	github.com/kennygrant/sanitize v1.2.4 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/stretchr/testify v1.8.2 // indirect

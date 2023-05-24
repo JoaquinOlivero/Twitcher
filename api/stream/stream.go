@@ -201,7 +201,7 @@ func Twitch(streamUrl string) error {
 				file.Close()
 			}
 
-			fmt.Println("Songs loop ending. Starting a new one")
+			log.Println("Songs loop ending. Starting a new one")
 		}
 
 	}()
@@ -393,10 +393,8 @@ func Twitch(streamUrl string) error {
 				"-i", "files/stream/audio", // Audio input pipe.
 				"-c:v", "libx264", // Encode new video with overlays.
 				"-c:a", "copy", // Copy the single audio stream.
-				"-g", "50",
-				"-keyint_min", "50", "-force_key_frames", "expr:gte(t,n_forced*2)",
-				"-f", "flv", "-flvflags", "no_duration_filesize", "-", // Pipe the result to the ffmpeg instance stdout.
-				// "-f", "flv", "-flvflags", "no_duration_filesize", streamUrl,
+				"-loglevel", "warning",
+				"-f", "mpegts", "-", // Pipe the result to the ffmpeg instance stdout.
 			)
 
 			cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
@@ -432,16 +430,20 @@ func Twitch(streamUrl string) error {
 	cmd := exec.Command("ffmpeg", "-hide_banner",
 		"-re", "-stream_loop", "-1",
 		"-i", "pipe:0",
-		"-flvflags", "no_duration_filesize",
+		"-r", "25",
+		"-g", "50",
+		"-keyint_min", "50", "-force_key_frames", "expr:gte(t,n_forced*2)",
+		"-loglevel", "warning",
 		"-f", "fifo", "-fifo_format", "flv", // Fifo muxer implemented to recover stream in case a failure occurs.
 		"-map", "0:v", "-map", "0:a",
 		"-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header", "-tag:v", "7", "-tag:a", "2",
 		"-c", "copy",
+		"-flvflags", "no_duration_filesize",
 		streamUrl,
 	)
 
-	// cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
-	cmd.Stdin = spr // Pipe that contains the video and audio ready to be streamed.
+	cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
+	cmd.Stdin = spr        // Pipe that contains the video and audio ready to be streamed.
 
 	cmd.Run()
 	return nil
