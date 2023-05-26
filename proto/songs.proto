@@ -4,8 +4,9 @@ package service;
 
 option go_package = "./pb";
 
-service SongsManagement {
-    rpc CreatePlaylist (Empty) returns (Playlist) {}
+service StreamManagement {
+    rpc CreateSongPlaylist (Empty) returns (SongPlaylist) {};
+    rpc UpdateSongPlaylist (stream SongPlaylist) returns (Empty) {};
 }
 
 message Song {
@@ -17,7 +18,7 @@ message Song {
     int32 bitrate = 6;
 }
 
-message Playlist {
+message SongPlaylist {
     repeated Song songs = 1;
 }
 

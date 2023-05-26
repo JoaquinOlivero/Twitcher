@@ -15,7 +15,7 @@ const grpcObj = (grpc.loadPackageDefinition(packageDef) as unknown) as ProtoGrpc
 
 export const createNewPlaylist = async () => {
 
-    const client = new grpcObj.service.SongsManagement(
+    const client = new grpcObj.service.StreamManagement(
         `0.0.0.0:9000`, grpc.credentials.createInsecure()
     )
 
@@ -29,7 +29,7 @@ export const createNewPlaylist = async () => {
                 resolve(undefined)
             }
 
-            client.CreatePlaylist({}, (err, res) => {
+            client.CreateSongPlaylist({}, (err, res) => {
                 if (err) {
                     console.log(err)
                     resolve(undefined)

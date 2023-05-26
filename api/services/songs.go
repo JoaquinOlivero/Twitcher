@@ -7,12 +7,11 @@ import (
 	"database/sql"
 )
 
-type SongsManagementServer struct {
-	pb.UnimplementedSongsManagementServer
-	// playlist *pb.Playlist
+type StreamManagementServer struct {
+	pb.UnimplementedStreamManagementServer
 }
 
-func (s *SongsManagementServer) CreatePlaylist(ctx context.Context, in *pb.Empty) (*pb.Playlist, error) {
+func (s *StreamManagementServer) CreateSongPlaylist(ctx context.Context, in *pb.Empty) (*pb.SongPlaylist, error) {
 	// Connect to db.
 	db, err := sql.Open("sqlite3", "data.db")
 	if err != nil {
@@ -51,7 +50,7 @@ func (s *SongsManagementServer) CreatePlaylist(ctx context.Context, in *pb.Empty
 
 	db.Close()
 
-	return &pb.Playlist{
+	return &pb.SongPlaylist{
 			Songs: songs,
 		},
 		nil

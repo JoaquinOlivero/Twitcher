@@ -1,7 +1,7 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { MessageTypeDefinition } from '@grpc/proto-loader';
 
-import type { SongsManagementClient as _service_SongsManagementClient, SongsManagementDefinition as _service_SongsManagementDefinition } from './service/SongsManagement';
+import type { StreamManagementClient as _service_StreamManagementClient, StreamManagementDefinition as _service_StreamManagementDefinition } from './service/StreamManagement';
 
 type SubtypeConstructor<Constructor extends new (...args: any) => any, Subtype> = {
   new(...args: ConstructorParameters<Constructor>): Subtype;
@@ -10,9 +10,10 @@ type SubtypeConstructor<Constructor extends new (...args: any) => any, Subtype> 
 export interface ProtoGrpcType {
   service: {
     Empty: MessageTypeDefinition
-    Playlist: MessageTypeDefinition
     Song: MessageTypeDefinition
-    SongsManagement: SubtypeConstructor<typeof grpc.Client, _service_SongsManagementClient> & { service: _service_SongsManagementDefinition }
+    SongPlaylist: MessageTypeDefinition
+    StreamManagement: SubtypeConstructor<typeof grpc.Client, _service_StreamManagementClient> & { service: _service_StreamManagementDefinition }
+    UpdateSongPlaylistRequest: MessageTypeDefinition
   }
 }
 

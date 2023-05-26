@@ -19,91 +19,163 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	SongsManagement_CreatePlaylist_FullMethodName = "/service.SongsManagement/CreatePlaylist"
+	StreamManagement_CreateSongPlaylist_FullMethodName = "/service.StreamManagement/CreateSongPlaylist"
+	StreamManagement_UpdateSongPlaylst_FullMethodName  = "/service.StreamManagement/UpdateSongPlaylst"
 )
 
-// SongsManagementClient is the client API for SongsManagement service.
+// StreamManagementClient is the client API for StreamManagement service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type SongsManagementClient interface {
-	CreatePlaylist(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Playlist, error)
+type StreamManagementClient interface {
+	CreateSongPlaylist(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*SongPlaylist, error)
+	UpdateSongPlaylst(ctx context.Context, opts ...grpc.CallOption) (StreamManagement_UpdateSongPlaylstClient, error)
 }
 
-type songsManagementClient struct {
+type streamManagementClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewSongsManagementClient(cc grpc.ClientConnInterface) SongsManagementClient {
-	return &songsManagementClient{cc}
+func NewStreamManagementClient(cc grpc.ClientConnInterface) StreamManagementClient {
+	return &streamManagementClient{cc}
 }
 
-func (c *songsManagementClient) CreatePlaylist(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Playlist, error) {
-	out := new(Playlist)
-	err := c.cc.Invoke(ctx, SongsManagement_CreatePlaylist_FullMethodName, in, out, opts...)
+func (c *streamManagementClient) CreateSongPlaylist(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*SongPlaylist, error) {
+	out := new(SongPlaylist)
+	err := c.cc.Invoke(ctx, StreamManagement_CreateSongPlaylist_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// SongsManagementServer is the server API for SongsManagement service.
-// All implementations must embed UnimplementedSongsManagementServer
+func (c *streamManagementClient) UpdateSongPlaylst(ctx context.Context, opts ...grpc.CallOption) (StreamManagement_UpdateSongPlaylstClient, error) {
+	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[0], StreamManagement_UpdateSongPlaylst_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &streamManagementUpdateSongPlaylstClient{stream}
+	return x, nil
+}
+
+type StreamManagement_UpdateSongPlaylstClient interface {
+	Send(*UpdateSongPlaylistRequest) error
+	CloseAndRecv() (*Empty, error)
+	grpc.ClientStream
+}
+
+type streamManagementUpdateSongPlaylstClient struct {
+	grpc.ClientStream
+}
+
+func (x *streamManagementUpdateSongPlaylstClient) Send(m *UpdateSongPlaylistRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *streamManagementUpdateSongPlaylstClient) CloseAndRecv() (*Empty, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(Empty)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// StreamManagementServer is the server API for StreamManagement service.
+// All implementations must embed UnimplementedStreamManagementServer
 // for forward compatibility
-type SongsManagementServer interface {
-	CreatePlaylist(context.Context, *Empty) (*Playlist, error)
-	mustEmbedUnimplementedSongsManagementServer()
+type StreamManagementServer interface {
+	CreateSongPlaylist(context.Context, *Empty) (*SongPlaylist, error)
+	UpdateSongPlaylst(StreamManagement_UpdateSongPlaylstServer) error
+	mustEmbedUnimplementedStreamManagementServer()
 }
 
-// UnimplementedSongsManagementServer must be embedded to have forward compatible implementations.
-type UnimplementedSongsManagementServer struct {
+// UnimplementedStreamManagementServer must be embedded to have forward compatible implementations.
+type UnimplementedStreamManagementServer struct {
 }
 
-func (UnimplementedSongsManagementServer) CreatePlaylist(context.Context, *Empty) (*Playlist, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreatePlaylist not implemented")
+func (UnimplementedStreamManagementServer) CreateSongPlaylist(context.Context, *Empty) (*SongPlaylist, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateSongPlaylist not implemented")
 }
-func (UnimplementedSongsManagementServer) mustEmbedUnimplementedSongsManagementServer() {}
+func (UnimplementedStreamManagementServer) UpdateSongPlaylst(StreamManagement_UpdateSongPlaylstServer) error {
+	return status.Errorf(codes.Unimplemented, "method UpdateSongPlaylst not implemented")
+}
+func (UnimplementedStreamManagementServer) mustEmbedUnimplementedStreamManagementServer() {}
 
-// UnsafeSongsManagementServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to SongsManagementServer will
+// UnsafeStreamManagementServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to StreamManagementServer will
 // result in compilation errors.
-type UnsafeSongsManagementServer interface {
-	mustEmbedUnimplementedSongsManagementServer()
+type UnsafeStreamManagementServer interface {
+	mustEmbedUnimplementedStreamManagementServer()
 }
 
-func RegisterSongsManagementServer(s grpc.ServiceRegistrar, srv SongsManagementServer) {
-	s.RegisterService(&SongsManagement_ServiceDesc, srv)
+func RegisterStreamManagementServer(s grpc.ServiceRegistrar, srv StreamManagementServer) {
+	s.RegisterService(&StreamManagement_ServiceDesc, srv)
 }
 
-func _SongsManagement_CreatePlaylist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _StreamManagement_CreateSongPlaylist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SongsManagementServer).CreatePlaylist(ctx, in)
+		return srv.(StreamManagementServer).CreateSongPlaylist(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SongsManagement_CreatePlaylist_FullMethodName,
+		FullMethod: StreamManagement_CreateSongPlaylist_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SongsManagementServer).CreatePlaylist(ctx, req.(*Empty))
+		return srv.(StreamManagementServer).CreateSongPlaylist(ctx, req.(*Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// SongsManagement_ServiceDesc is the grpc.ServiceDesc for SongsManagement service.
+func _StreamManagement_UpdateSongPlaylst_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(StreamManagementServer).UpdateSongPlaylst(&streamManagementUpdateSongPlaylstServer{stream})
+}
+
+type StreamManagement_UpdateSongPlaylstServer interface {
+	SendAndClose(*Empty) error
+	Recv() (*UpdateSongPlaylistRequest, error)
+	grpc.ServerStream
+}
+
+type streamManagementUpdateSongPlaylstServer struct {
+	grpc.ServerStream
+}
+
+func (x *streamManagementUpdateSongPlaylstServer) SendAndClose(m *Empty) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *streamManagementUpdateSongPlaylstServer) Recv() (*UpdateSongPlaylistRequest, error) {
+	m := new(UpdateSongPlaylistRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// StreamManagement_ServiceDesc is the grpc.ServiceDesc for StreamManagement service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var SongsManagement_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "service.SongsManagement",
-	HandlerType: (*SongsManagementServer)(nil),
+var StreamManagement_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "service.StreamManagement",
+	HandlerType: (*StreamManagementServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "CreatePlaylist",
-			Handler:    _SongsManagement_CreatePlaylist_Handler,
+			MethodName: "CreateSongPlaylist",
+			Handler:    _StreamManagement_CreateSongPlaylist_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "UpdateSongPlaylst",
+			Handler:       _StreamManagement_UpdateSongPlaylst_Handler,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "proto/songs.proto",
 }

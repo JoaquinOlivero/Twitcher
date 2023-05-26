@@ -3,7 +3,7 @@ const nextConfig = {
     async rewrites() {
         return [
           {
-            source: '/images/:path*',
+            source: '/api/:path*',
             destination: 'http://localhost:9001/:path*' // Proxy to Backend
           }
         ]

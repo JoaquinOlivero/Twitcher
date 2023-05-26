@@ -77,13 +77,21 @@ func main() {
 		return
 	}
 
-	if flag.Arg(0) == "grpc" {
+	if flag.Arg(0) == "gui" {
 
+		// serve static files
 		go func() {
-			http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("files/covers"))))
+			http.Handle("/covers/", http.StripPrefix("/covers/", http.FileServer(http.Dir("files/covers"))))
+			http.Handle("/preview/", http.StripPrefix("/preview/", http.FileServer(http.Dir("files/stream/preview"))))
+
+			log.Println("Static file server listening at :9001")
 			if err := http.ListenAndServe(":9001", nil); err != nil {
 				log.Fatal("ListenAndServe: ", err)
 			}
+		}()
+
+		go func() {
+			stream.Preview(true)
 		}()
 
 		lis, err := net.Listen("tcp", ":9000")
@@ -94,7 +102,7 @@ func main() {
 		grpcServer := grpc.NewServer()
 
 		// Register service methods
-		pb.RegisterSongsManagementServer(grpcServer, &service.SongsManagementServer{})
+		pb.RegisterStreamManagementServer(grpcServer, &service.StreamManagementServer{})
 
 		log.Printf("gRPC server listening at %v", lis.Addr())
 		if err := grpcServer.Serve(lis); err != nil {

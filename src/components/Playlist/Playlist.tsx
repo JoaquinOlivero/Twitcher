@@ -69,7 +69,7 @@ const Playlist = ({ songs }: Props) => {
             <div className="w-[98%] h-1 mx-auto my-1 bg-background"></div>
 
             {list &&
-                <div className="overflow-y-scroll h-full py-1 ml-2 scrollbar" ref={playlistRef} onDragOver={(e) => { e.preventDefault() }}>
+                <div className="overflow-y-scroll h-full py-1 scrollbar" ref={playlistRef} onDragOver={(e) => { e.preventDefault() }}>
                     {list.map((song: Song__Output, index: number) => {
                         return <div key={song.page} className="flex gap-2 p-2 hover:bg-background hover:cursor-grab active:cursor-grabbing"
                             draggable
@@ -80,7 +80,7 @@ const Playlist = ({ songs }: Props) => {
                             onDragEnd={() => handleDragEnd()}
                         >
                             <div className="w-12 h-12">
-                                <img src={`/images/${song.cover}`} />
+                                <img src={`/api/covers/${song.cover}`} />
                             </div>
 
                             <div className="flex flex-col">

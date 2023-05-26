@@ -72,6 +72,230 @@ type SubscriptionChannel struct {
 	Username string
 }
 
+func audio(wg *sync.WaitGroup) error {
+	// Named pipe
+	audioPipePath := "files/stream/audio"
+
+	// Remove the named pipes if they already exists.
+	err := os.Remove(audioPipePath)
+	if err != nil && !os.IsNotExist(err) {
+		panic(err)
+	}
+
+	// Create named pipes.
+	err = syscall.Mkfifo(audioPipePath, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	wgCountdown := 1
+
+	for {
+
+		// Get songs from the database in random order.
+		songs, err := getSongs()
+		if err != nil {
+			return err
+		}
+
+		// Loop through the songs in real-time.
+		for _, song := range songs {
+			// Open named audio pipe
+			audioPipe, err := os.OpenFile("files/stream/audio", os.O_RDWR, os.ModeNamedPipe)
+			if err != nil {
+				panic(err)
+			}
+
+			// Stop waiting after the silent audio file has been played.
+			if wgCountdown == 1 {
+				wg.Done()
+				wgCountdown--
+			}
+
+			// Change cover
+			go changeCover(song.Name, song.Author, song.Page, song.CoverFilename)
+
+			// Buffer audio file in real-time to named pipe.
+			file, err := os.Open("files/songs/" + song.AudioFilename)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+
+			// Buffer with a size corresponding to the sample rate of the audio file which is 44100 Hz. All audio files have been normalize to 44100 Hz.
+			r := bufio.NewReader(file)
+			buffer := make([]byte, 44100*2)
+
+			for {
+				n, err := io.ReadFull(r, buffer[:cap(buffer)])
+				buffer = buffer[:n]
+
+				if err != nil {
+					// This is an expected EOF error because it's thrown when no more input is available and it's been made to signal a graceful end of input.
+					// Basically the file has been completely read and therefore everything is OK.
+					if err == io.EOF {
+						break
+					}
+
+					// Unlike the previous error, an unexpected EOF means that an EOF was encountered in the middle of reading a fixed-size block or data structure.
+					if err != io.ErrUnexpectedEOF {
+						fmt.Fprintln(os.Stderr, err)
+						break
+					}
+				}
+
+				// process buf
+				_, err = audioPipe.Write(buffer)
+				if err != nil {
+					return err
+				}
+
+			}
+
+			file.Close()
+		}
+
+		log.Println("Songs loop ending. Starting a new one")
+	}
+}
+
+// func video() error {
+// 	// Named pipe
+// 	videoPipePath := "files/stream/video"
+
+// 	err := os.Remove(videoPipePath)
+// 	if err != nil && !os.IsNotExist(err) {
+// 		panic(err)
+// 	}
+
+// 	err = syscall.Mkfifo(videoPipePath, 0644)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	return nil
+// }
+
+func output(wg *sync.WaitGroup) error {
+	// Named pipe
+	outputPipePath := "files/stream/output"
+
+	err := os.Remove(outputPipePath)
+	if err != nil && !os.IsNotExist(err) {
+		panic(err)
+	}
+
+	err = syscall.Mkfifo(outputPipePath, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	wgCountdown := 1
+
+	for {
+		// Open named output pipe.
+		outputPipe, err := os.OpenFile("files/stream/output", os.O_RDWR, os.ModeNamedPipe)
+		if err != nil {
+			panic(err)
+		}
+
+		cmd := exec.Command("ffmpeg",
+			"-hide_banner",
+			"-y", "-re",
+			"-stream_loop", "-1",
+			"-i", "files/stream/sunset-720p.mp4", // Background video
+			"-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
+			"-f", "image2", "-loop", "1", "-i", "files/stream/alerts/frames/%d.png",
+			"-filter_complex", "[0][1]overlay=5:5[v1];[v1][2]overlay=W-w+10:H-h+60", // Filter that actually places the overlays over the video.
+			"-i", "files/stream/audio", // Audio input pipe.
+			"-f", "fifo", // Fifo muxer implemented to recover stream in case of failure.
+			"-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header", "-tag:v", "7", "-tag:a", "2",
+			"-g", "50",
+			"-keyint_min", "50", "-force_key_frames", "expr:gte(t,n_forced*2)",
+			"-c:v", "libx264", // Encode new video with overlays.
+			"-c:a", "copy", // Copy the single audio stream.
+			// "-loglevel", "warning",
+			"-f", "mpegts", "-", // Pipe the result to the ffmpeg instance stdout.
+		)
+
+		cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
+
+		cmd.Stdout = outputPipe // Write the stdout the the "output" pipe.
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Pdeathsig: syscall.SIGKILL,
+		}
+
+		// Stop waiting once the ffmpeg instance starts.
+		if wgCountdown == 1 {
+			wg.Done()
+			wgCountdown--
+		}
+
+		cmd.Run()
+		// err = cmd.Start()
+		// if err != nil {
+		// 	log.Fatalln(err)
+		// 	return err
+		// }
+
+		// err = cmd.Wait()
+		// if err != nil {
+		// 	log.Fatalln(err)
+		// 	return err
+		// }
+	}
+
+}
+
+func Preview(preview bool) error {
+	os.RemoveAll("files/stream/preview")
+	os.MkdirAll("files/stream/preview", 0777)
+
+	if preview {
+		var (
+			wgAudio  sync.WaitGroup
+			wgOutput sync.WaitGroup
+		)
+
+		wgAudio.Add(1)
+		wgOutput.Add(1)
+
+		// First wait until the audio named pipe is ready so that it can later be used in the ffmpeg instance that generates the final output for the stream.
+		go audio(&wgAudio)
+		// wgAudio.Wait()
+
+		// Finally wait until the ffmpeg instance that composes the whole stream is ready to be previewed.
+		go output(&wgOutput)
+		// wgOutput.Wait()
+	}
+	time.Sleep(5 * time.Second)
+
+	// Ffmpeg instance that streams the piped input to Twitch's rtmp servers.
+	cmd := exec.Command("ffmpeg", "-hide_banner",
+		"-re", "-stream_loop", "1",
+		"-i", "files/stream/output",
+		// "-loglevel", "warning",
+		"-f", "fifo", // Fifo muxer implemented to recover stream in case of failure.
+		"-map", "0:v", "-map", "0:a",
+		"-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header", "-tag:v", "7", "-tag:a", "2",
+		"-c", "copy",
+		"-hls_time", "4",
+		"-hls_list_size", "10",
+		"-hls_flags", "delete_segments",
+		"-f", "hls",
+		"files/stream/preview/master.m3u8",
+	)
+
+	// cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGKILL,
+	}
+
+	cmd.Run()
+
+	return nil
+}
+
 func Twitch(streamUrl string) error {
 	// Named pipes
 	audioPipePath := "files/stream/audio"
