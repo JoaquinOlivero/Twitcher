@@ -20,7 +20,9 @@ const _ = grpc.SupportPackageIsVersion7
 
 const (
 	StreamManagement_CreateSongPlaylist_FullMethodName = "/service.StreamManagement/CreateSongPlaylist"
-	StreamManagement_UpdateSongPlaylst_FullMethodName  = "/service.StreamManagement/UpdateSongPlaylst"
+	StreamManagement_Preview_FullMethodName            = "/service.StreamManagement/Preview"
+	StreamManagement_Audio_FullMethodName              = "/service.StreamManagement/Audio"
+	StreamManagement_Output_FullMethodName             = "/service.StreamManagement/Output"
 )
 
 // StreamManagementClient is the client API for StreamManagement service.
@@ -28,7 +30,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type StreamManagementClient interface {
 	CreateSongPlaylist(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*SongPlaylist, error)
-	UpdateSongPlaylst(ctx context.Context, opts ...grpc.CallOption) (StreamManagement_UpdateSongPlaylstClient, error)
+	Preview(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
+	Audio(ctx context.Context, opts ...grpc.CallOption) (StreamManagement_AudioClient, error)
+	Output(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_OutputClient, error)
 }
 
 type streamManagementClient struct {
@@ -48,34 +52,72 @@ func (c *streamManagementClient) CreateSongPlaylist(ctx context.Context, in *Emp
 	return out, nil
 }
 
-func (c *streamManagementClient) UpdateSongPlaylst(ctx context.Context, opts ...grpc.CallOption) (StreamManagement_UpdateSongPlaylstClient, error) {
-	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[0], StreamManagement_UpdateSongPlaylst_FullMethodName, opts...)
+func (c *streamManagementClient) Preview(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, StreamManagement_Preview_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &streamManagementUpdateSongPlaylstClient{stream}
+	return out, nil
+}
+
+func (c *streamManagementClient) Audio(ctx context.Context, opts ...grpc.CallOption) (StreamManagement_AudioClient, error) {
+	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[0], StreamManagement_Audio_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &streamManagementAudioClient{stream}
 	return x, nil
 }
 
-type StreamManagement_UpdateSongPlaylstClient interface {
-	Send(*UpdateSongPlaylistRequest) error
-	CloseAndRecv() (*Empty, error)
+type StreamManagement_AudioClient interface {
+	Send(*AudioStream) error
+	Recv() (*AudioStream, error)
 	grpc.ClientStream
 }
 
-type streamManagementUpdateSongPlaylstClient struct {
+type streamManagementAudioClient struct {
 	grpc.ClientStream
 }
 
-func (x *streamManagementUpdateSongPlaylstClient) Send(m *UpdateSongPlaylistRequest) error {
+func (x *streamManagementAudioClient) Send(m *AudioStream) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *streamManagementUpdateSongPlaylstClient) CloseAndRecv() (*Empty, error) {
+func (x *streamManagementAudioClient) Recv() (*AudioStream, error) {
+	m := new(AudioStream)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *streamManagementClient) Output(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_OutputClient, error) {
+	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[1], StreamManagement_Output_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &streamManagementOutputClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
 	if err := x.ClientStream.CloseSend(); err != nil {
 		return nil, err
 	}
-	m := new(Empty)
+	return x, nil
+}
+
+type StreamManagement_OutputClient interface {
+	Recv() (*OutputResponse, error)
+	grpc.ClientStream
+}
+
+type streamManagementOutputClient struct {
+	grpc.ClientStream
+}
+
+func (x *streamManagementOutputClient) Recv() (*OutputResponse, error) {
+	m := new(OutputResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -87,7 +129,9 @@ func (x *streamManagementUpdateSongPlaylstClient) CloseAndRecv() (*Empty, error)
 // for forward compatibility
 type StreamManagementServer interface {
 	CreateSongPlaylist(context.Context, *Empty) (*SongPlaylist, error)
-	UpdateSongPlaylst(StreamManagement_UpdateSongPlaylstServer) error
+	Preview(context.Context, *Empty) (*Empty, error)
+	Audio(StreamManagement_AudioServer) error
+	Output(*Empty, StreamManagement_OutputServer) error
 	mustEmbedUnimplementedStreamManagementServer()
 }
 
@@ -98,8 +142,14 @@ type UnimplementedStreamManagementServer struct {
 func (UnimplementedStreamManagementServer) CreateSongPlaylist(context.Context, *Empty) (*SongPlaylist, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateSongPlaylist not implemented")
 }
-func (UnimplementedStreamManagementServer) UpdateSongPlaylst(StreamManagement_UpdateSongPlaylstServer) error {
-	return status.Errorf(codes.Unimplemented, "method UpdateSongPlaylst not implemented")
+func (UnimplementedStreamManagementServer) Preview(context.Context, *Empty) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Preview not implemented")
+}
+func (UnimplementedStreamManagementServer) Audio(StreamManagement_AudioServer) error {
+	return status.Errorf(codes.Unimplemented, "method Audio not implemented")
+}
+func (UnimplementedStreamManagementServer) Output(*Empty, StreamManagement_OutputServer) error {
+	return status.Errorf(codes.Unimplemented, "method Output not implemented")
 }
 func (UnimplementedStreamManagementServer) mustEmbedUnimplementedStreamManagementServer() {}
 
@@ -132,30 +182,69 @@ func _StreamManagement_CreateSongPlaylist_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
-func _StreamManagement_UpdateSongPlaylst_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(StreamManagementServer).UpdateSongPlaylst(&streamManagementUpdateSongPlaylstServer{stream})
+func _StreamManagement_Preview_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StreamManagementServer).Preview(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StreamManagement_Preview_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StreamManagementServer).Preview(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-type StreamManagement_UpdateSongPlaylstServer interface {
-	SendAndClose(*Empty) error
-	Recv() (*UpdateSongPlaylistRequest, error)
+func _StreamManagement_Audio_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(StreamManagementServer).Audio(&streamManagementAudioServer{stream})
+}
+
+type StreamManagement_AudioServer interface {
+	Send(*AudioStream) error
+	Recv() (*AudioStream, error)
 	grpc.ServerStream
 }
 
-type streamManagementUpdateSongPlaylstServer struct {
+type streamManagementAudioServer struct {
 	grpc.ServerStream
 }
 
-func (x *streamManagementUpdateSongPlaylstServer) SendAndClose(m *Empty) error {
+func (x *streamManagementAudioServer) Send(m *AudioStream) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *streamManagementUpdateSongPlaylstServer) Recv() (*UpdateSongPlaylistRequest, error) {
-	m := new(UpdateSongPlaylistRequest)
+func (x *streamManagementAudioServer) Recv() (*AudioStream, error) {
+	m := new(AudioStream)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
+}
+
+func _StreamManagement_Output_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(Empty)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(StreamManagementServer).Output(m, &streamManagementOutputServer{stream})
+}
+
+type StreamManagement_OutputServer interface {
+	Send(*OutputResponse) error
+	grpc.ServerStream
+}
+
+type streamManagementOutputServer struct {
+	grpc.ServerStream
+}
+
+func (x *streamManagementOutputServer) Send(m *OutputResponse) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 // StreamManagement_ServiceDesc is the grpc.ServiceDesc for StreamManagement service.
@@ -169,12 +258,22 @@ var StreamManagement_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "CreateSongPlaylist",
 			Handler:    _StreamManagement_CreateSongPlaylist_Handler,
 		},
+		{
+			MethodName: "Preview",
+			Handler:    _StreamManagement_Preview_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "UpdateSongPlaylst",
-			Handler:       _StreamManagement_UpdateSongPlaylst_Handler,
+			StreamName:    "Audio",
+			Handler:       _StreamManagement_Audio_Handler,
+			ServerStreams: true,
 			ClientStreams: true,
+		},
+		{
+			StreamName:    "Output",
+			Handler:       _StreamManagement_Output_Handler,
+			ServerStreams: true,
 		},
 	},
 	Metadata: "proto/songs.proto",

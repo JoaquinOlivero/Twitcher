@@ -9,11 +9,12 @@ type SubtypeConstructor<Constructor extends new (...args: any) => any, Subtype> 
 
 export interface ProtoGrpcType {
   service: {
+    AudioStream: MessageTypeDefinition
     Empty: MessageTypeDefinition
+    OutputResponse: MessageTypeDefinition
     Song: MessageTypeDefinition
     SongPlaylist: MessageTypeDefinition
     StreamManagement: SubtypeConstructor<typeof grpc.Client, _service_StreamManagementClient> & { service: _service_StreamManagementDefinition }
-    UpdateSongPlaylistRequest: MessageTypeDefinition
   }
 }
 

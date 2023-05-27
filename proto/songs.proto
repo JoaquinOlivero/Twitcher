@@ -6,7 +6,9 @@ option go_package = "./pb";
 
 service StreamManagement {
     rpc CreateSongPlaylist (Empty) returns (SongPlaylist) {};
-    rpc UpdateSongPlaylist (stream SongPlaylist) returns (Empty) {};
+    rpc Preview (Empty) returns (Empty) {};
+    rpc Audio (stream AudioStream) returns (stream AudioStream) {};
+    rpc Output (Empty) returns (stream OutputResponse) {};
 }
 
 message Song {
@@ -20,6 +22,15 @@ message Song {
 
 message SongPlaylist {
     repeated Song songs = 1;
+}
+
+message AudioStream {
+    SongPlaylist playlist = 1;    
+}
+
+message OutputResponse {
+    string bitrate = 1;
+    string time = 2;
 }
 
 message Empty {
