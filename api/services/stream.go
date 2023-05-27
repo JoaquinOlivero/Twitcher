@@ -54,6 +54,13 @@ func (s *StreamManagementServer) Audio(stream pb.StreamManagement_AudioServer) e
 		)
 	}
 
+	if len(s.playlist.Songs) == 0 {
+		return status.Errorf(
+			codes.FailedPrecondition,
+			fmt.Sprintln("cannot play audio. Playlist is empty"),
+		)
+	}
+
 	s.mu.Lock()
 	s.audioOn = true
 	s.mu.Unlock()
@@ -194,13 +201,6 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 		return status.Errorf(
 			codes.FailedPrecondition,
 			fmt.Sprintln("output already started"),
-		)
-	}
-
-	if len(s.playlist.Songs) == 0 {
-		return status.Errorf(
-			codes.FailedPrecondition,
-			fmt.Sprintln("cannot play audio. Playlist is empty"),
 		)
 	}
 
