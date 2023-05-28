@@ -41,13 +41,13 @@ type Song struct {
 
 type StreamManagementServer struct {
 	pb.UnimplementedStreamManagementServer
-	playlist pb.SongPlaylist
-	mu       sync.Mutex
-	audioOn  bool
-	outputOn bool
+	playlist  pb.SongPlaylist
+	mu        sync.Mutex
+	audioOn   bool
+	outputOn  bool
+	previewOn bool
 }
 
-// func (s *StreamManagementServer) Audio(stream pb.StreamManagement_AudioServer) error {
 func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_AudioServer) error {
 	if s.audioOn {
 		return status.Errorf(
@@ -125,6 +125,7 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 		r := bufio.NewReader(file)
 		buffer := make([]byte, 44100)
 
+		i := 1
 		for {
 			n, err := io.ReadFull(r, buffer[:cap(buffer)])
 			buffer = buffer[:n]
@@ -149,6 +150,11 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 				return err
 			}
 
+			if i > 0 {
+				// Let client know that the audio is ready to be used in the final output.
+				stream.Send(&pb.AudioStream{Ready: true})
+				i--
+			}
 		}
 
 		file.Close()
@@ -229,8 +235,10 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 		}
 
 		cmd.Start()
+		stream.Send(&pb.OutputResponse{Ready: true})
 		scanner := bufio.NewScanner(stdErr)
 		scanner.Split(bufio.ScanWords)
+
 		for scanner.Scan() {
 			var bitrateLine, timeLine string
 
@@ -286,7 +294,19 @@ func (s *StreamManagementServer) Preview(ctx context.Context, in *pb.Empty) (*pb
 		Pdeathsig: syscall.SIGKILL,
 	}
 
-	cmd.Run()
+	err := cmd.Start()
+	if err != nil {
+		panic(err)
+	}
+
+	s.mu.Lock()
+	s.previewOn = true
+	s.mu.Unlock()
+
+	err = cmd.Wait()
+	if err != nil {
+		panic(err)
+	}
 
 	return &pb.Empty{}, nil
 }

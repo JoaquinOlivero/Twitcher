@@ -28,11 +28,13 @@ message SongPlaylist {
 
 message AudioStream {
     SongPlaylist playlist = 1;    
+    bool ready = 2;
 }
 
 message OutputResponse {
     string bitrate = 1;
     string time = 2;
+    bool ready = 3;
 }
 
 message Empty {
