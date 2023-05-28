@@ -1,18 +1,31 @@
 'use client';
 import { Song__Output } from "@/pb/service/Song";
-import React, { useState, useTransition, useRef, createElement } from "react";
-// import { createNewPlaylist } from "@/actions";
+import React, { useState, useRef, useEffect } from "react";
+import { createNewPlaylist, getCurrentPlaylist, updateSongPlaylist } from "@/actions";
+import { SongPlaylist__Output } from "@/pb/service/SongPlaylist";
 
-type Props = {
-    songs: Song__Output[] | undefined
-}
-
-const Playlist = ({ songs }: Props) => {
+const Playlist = () => {
     const playlistRef = useRef<HTMLDivElement>(null);
     const dragItem = useRef<number | null>(null);
     const dragOverItem = useRef<number | null>(null);
-    const [list, setList] = useState<Song__Output[] | undefined>(songs)
-    // let [isPending, startTransition] = useTransition()
+    // const [list, setList] = useState<Song__Output[] | undefined>(undefined)
+    const [list, setList] = useState<SongPlaylist__Output | undefined>(undefined)
+
+    useEffect(() => {
+        getCurrentPlaylist().then((result) => {
+            setList(result)
+        }).catch((err) => {
+            setList(undefined)
+        });
+
+    }, [])
+
+
+    const handleOnSubmit = async () => {
+        const playlist = await createNewPlaylist()
+        setList(playlist)
+    }
+
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, position: number) => {
         dragItem.current = position;
@@ -23,14 +36,15 @@ const Playlist = ({ songs }: Props) => {
         dragOverItem.current = position;
     }
 
-    const handleDragEnd = () => {
-        if (list && dragItem.current !== null && dragOverItem.current !== null && playlistRef.current !== null) {
-            const copyListItems = [...list];
+    const handleDragEnd = async () => {
+        if (list && dragItem.current !== null && dragOverItem.current !== null && playlistRef.current !== null && list.songs) {
+            const copyListItems = [...list.songs];
+            // const copyListItems = list.songs;
             const dragItemContent = copyListItems[dragItem.current];
             copyListItems.splice(dragItem.current, 1);
             copyListItems.splice(dragOverItem.current, 0, dragItemContent);
 
-            setList(copyListItems);
+            setList({ songs: copyListItems });
 
             const dragItemDiv = playlistRef.current.children[dragOverItem.current]
             dragItemDiv.classList.remove("opacity-40")
@@ -40,6 +54,8 @@ const Playlist = ({ songs }: Props) => {
 
             dragItem.current = null;
             dragOverItem.current = null;
+
+            await updateSongPlaylist({ songs: copyListItems })
         }
     }
 
@@ -61,16 +77,24 @@ const Playlist = ({ songs }: Props) => {
 
     return (
         <div className="bg-foreground shadow-lg w-1/2 h-[95%] rounded-t-xl font-sans overflow-hidden">
-            {/* <button onClick={() => startTransition(() => createNewPlaylist())}>Create new playlist</button> */}
-            <div className="text-[#fff] w-[100%] my-1 text-center opacity-80 text-xl font-semibold uppercase tracking-wider">
-                Playlist
+            <div className="text-[#fff] w-full my-1 relative">
+
+                <div className="text-center opacity-80 text-xl font-semibold uppercase tracking-wider">
+                    Playlist
+                </div>
+
+                {list && !list.songs &&
+                    <button className="absolute right-5 top-1/2 transform -translate-y-1/2" onClick={() => handleOnSubmit()}>Create new playlist</button>
+                }
+
             </div>
+
 
             <div className="w-[98%] h-1 mx-auto my-1 bg-background"></div>
 
-            {list &&
+            {list && list.songs &&
                 <div className="overflow-y-scroll h-full py-1 scrollbar" ref={playlistRef} onDragOver={(e) => { e.preventDefault() }}>
-                    {list.map((song: Song__Output, index: number) => {
+                    {list.songs.map((song: Song__Output, index: number) => {
                         return <div key={song.page} className="flex gap-2 p-2 hover:bg-background hover:cursor-grab active:cursor-grabbing"
                             draggable
                             onDragStart={(e) => handleDragStart(e, index)}
