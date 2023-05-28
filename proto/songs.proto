@@ -6,8 +6,10 @@ option go_package = "./pb";
 
 service StreamManagement {
     rpc CreateSongPlaylist (Empty) returns (SongPlaylist) {};
+    rpc CurrentSongPlaylist (Empty) returns (SongPlaylist) {};
+    rpc UpdateSongPlaylist (SongPlaylist) returns (Empty) {};
     rpc Preview (Empty) returns (Empty) {};
-    rpc Audio (stream AudioStream) returns (stream AudioStream) {};
+    rpc Audio (Empty) returns (stream AudioStream) {};
     rpc Output (Empty) returns (stream OutputResponse) {};
 }
 
