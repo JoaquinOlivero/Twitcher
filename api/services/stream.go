@@ -11,6 +11,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,7 +47,8 @@ type StreamManagementServer struct {
 	outputOn bool
 }
 
-func (s *StreamManagementServer) Audio(stream pb.StreamManagement_AudioServer) error {
+// func (s *StreamManagementServer) Audio(stream pb.StreamManagement_AudioServer) error {
+func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_AudioServer) error {
 	if s.audioOn {
 		return status.Errorf(
 			codes.FailedPrecondition,
@@ -80,41 +82,28 @@ func (s *StreamManagementServer) Audio(stream pb.StreamManagement_AudioServer) e
 		panic(err)
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	wgCounter := 1
-
-	// Read from client
-	go func() error {
-		for {
-			in, err := stream.Recv()
-			if err == io.EOF {
-				return nil
-			}
-			if err != nil {
-				return err
-			}
-
-			s.mu.Lock()
-
-			s.playlist.Songs = nil
-			s.playlist.Songs = append(s.playlist.Songs, in.Playlist.Songs...)
-
-			s.mu.Unlock()
-
-			if wgCounter == 1 {
-				wg.Done()
-				wgCounter--
-			}
-		}
-	}()
-
-	// Wait for the playlist coming from the client.
-	wg.Wait()
-
 	for {
 
 		song := s.playlist.Songs[0]
+
+		// Pop the song from the queue and send new playlist to client.
+		go func() {
+			s.mu.Lock()
+			_, s.playlist.Songs = s.playlist.Songs[0], s.playlist.Songs[1:]
+			stream.Send(&pb.AudioStream{Playlist: &s.playlist})
+			s.mu.Unlock()
+
+			// Generate new playlist when there are ten songs left.
+			if len(s.playlist.Songs) == 10 {
+				playlist, err := s.generateRandomPlaylist() // this functions appends to the *pb.Song slice
+				if err != nil {
+					log.Println(err)
+				}
+
+				// Send extended playlist back to client.
+				stream.Send(&pb.AudioStream{Playlist: playlist})
+			}
+		}()
 
 		// Change cover
 		go changeCover(song.Name, song.Author, song.Page, song.Cover)
@@ -163,22 +152,6 @@ func (s *StreamManagementServer) Audio(stream pb.StreamManagement_AudioServer) e
 		}
 
 		file.Close()
-
-		// Pop the song that just finished from the queue and send new playlist to client.
-		s.mu.Lock()
-		_, s.playlist.Songs = s.playlist.Songs[0], s.playlist.Songs[1:]
-		stream.Send(&pb.AudioStream{Playlist: &s.playlist})
-		s.mu.Lock()
-
-		// Generate new playlist when there are ten songs left.
-		if len(s.playlist.Songs) == 10 {
-			playlist, err := s.generateRandomPlaylist() // this functions appends to the *pb.Song slice
-			if err != nil {
-				return err
-			}
-
-			stream.Send(&pb.AudioStream{Playlist: playlist})
-		}
 
 		if len(s.playlist.Songs) == 0 {
 			break
@@ -308,7 +281,7 @@ func (s *StreamManagementServer) Preview(ctx context.Context, in *pb.Empty) (*pb
 		"files/stream/preview/master.m3u8",
 	)
 
-	cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
+	// cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}
@@ -326,6 +299,22 @@ func (s *StreamManagementServer) CreateSongPlaylist(ctx context.Context, in *pb.
 	}
 
 	return playlist, nil
+}
+
+func (s *StreamManagementServer) CurrentSongPlaylist(ctx context.Context, in *pb.Empty) (*pb.SongPlaylist, error) {
+	return &s.playlist, nil
+}
+
+func (s *StreamManagementServer) UpdateSongPlaylist(ctx context.Context, in *pb.SongPlaylist) (*pb.Empty, error) {
+
+	s.mu.Lock()
+
+	s.playlist.Songs = nil
+	s.playlist.Songs = append(s.playlist.Songs, in.Songs...)
+
+	s.mu.Unlock()
+
+	return &pb.Empty{}, nil
 }
 
 // This function is required in CreateSongPlaylist() and Audio()
