@@ -48,6 +48,25 @@ type StreamManagementServer struct {
 	previewOn bool
 }
 
+var (
+	audioDataRes = make(chan *pb.AudioStream)
+
+	outputDataRes = make(chan *pb.OutputResponse)
+	outputDataReq = make(chan struct{})
+)
+
+func (s *StreamManagementServer) AudioData(in *pb.Empty, stream pb.StreamManagement_AudioDataServer) error {
+	for {
+		v := <-audioDataRes
+		err := stream.Send(v)
+		if err != nil {
+			break
+		}
+	}
+
+	return nil
+}
+
 func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_AudioServer) error {
 	if s.audioOn {
 		return status.Errorf(
@@ -82,6 +101,7 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 		panic(err)
 	}
 
+	i := 1
 	for {
 
 		song := s.playlist.Songs[0]
@@ -90,8 +110,8 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 		go func() {
 			s.mu.Lock()
 			_, s.playlist.Songs = s.playlist.Songs[0], s.playlist.Songs[1:]
-			stream.Send(&pb.AudioStream{Playlist: &s.playlist})
 			s.mu.Unlock()
+			audioDataRes <- &pb.AudioStream{Playlist: &s.playlist}
 
 			// Generate new playlist when there are ten songs left.
 			if len(s.playlist.Songs) == 10 {
@@ -101,7 +121,7 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 				}
 
 				// Send extended playlist back to client.
-				stream.Send(&pb.AudioStream{Playlist: playlist})
+				audioDataRes <- &pb.AudioStream{Playlist: playlist}
 			}
 		}()
 
@@ -125,7 +145,6 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 		r := bufio.NewReader(file)
 		buffer := make([]byte, 44100)
 
-		i := 1
 		for {
 			n, err := io.ReadFull(r, buffer[:cap(buffer)])
 			buffer = buffer[:n]
@@ -166,6 +185,20 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 
 	return nil
 
+}
+
+func (s *StreamManagementServer) OutputData(in *pb.Empty, stream pb.StreamManagement_OutputDataServer) error {
+	for {
+		outputDataReq <- struct{}{}
+		v := <-outputDataRes
+		fmt.Println(v)
+		err := stream.Send(v)
+		if err != nil {
+			break
+		}
+	}
+
+	return nil
 }
 
 func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement_OutputServer) error {
@@ -250,7 +283,14 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 				_, timeLine, _ = strings.Cut(m, "time=")
 
 				if bitrateLine != "" || timeLine != "" {
-					stream.Send(&pb.OutputResponse{Bitrate: bitrateLine, Time: timeLine})
+					// stream.Send(&pb.OutputResponse{Bitrate: bitrateLine, Time: timeLine})
+					select {
+					case <-outputDataReq:
+						outputDataRes <- &pb.OutputResponse{Bitrate: bitrateLine, Time: timeLine}
+					default:
+
+					}
+
 				}
 			}
 
