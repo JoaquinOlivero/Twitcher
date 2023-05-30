@@ -4,12 +4,11 @@ import path, { resolve } from 'path'
 import * as grpc from "@grpc/grpc-js"
 import * as protoLoader from "@grpc/proto-loader"
 import { ProtoGrpcType } from "@/pb/songs"
-import { Song__Output } from '@/pb/service/Song'
-import { revalidatePath } from 'next/cache'
 import { SongPlaylist__Output } from './pb/service/SongPlaylist';
-import { time } from 'console';
 import { AudioStream__Output } from './pb/service/AudioStream';
 import { OutputResponse__Output } from './pb/service/OutputResponse';
+import { revalidatePath } from 'next/cache';
+import { SDP__Output } from './pb/service/SDP';
 
 const PROTO_FILE = "../../../../proto/songs.proto"
 
@@ -52,7 +51,7 @@ export const getCurrentPlaylist = async () => {
 }
 
 export const createNewPlaylist = async () => {
-
+    console.log("creating new playlist")
     const deadline = new Date()
     deadline.setSeconds(deadline.getSeconds() + 5)
 
@@ -71,6 +70,7 @@ export const createNewPlaylist = async () => {
                 
                 if (res !== undefined) {
                     resolve(res)
+                    revalidatePath("/")
                 } else {
                     resolve(undefined)
                 }
@@ -103,18 +103,13 @@ export const updateSongPlaylist = async (songs: SongPlaylist__Output) => {
 
 }
 
-export const startPreview = async () => {
-    
-    // Listen to audio grpc stream.
-    const audio: string = await new Promise(resolve => {
-        var call = client.Audio({});
-        call.on("data", async (res: AudioStream__Output) => {
-            if (res.playlist) {
-                // console.log(res)
-            }
+export const enablePreview = async (clientSdp: string) => {
 
-            if (res.ready) {
-                resolve("audio ready")
+    const serverSdp: string = await new Promise<string>(resolve => {
+        var call = client.Preview({sdp: clientSdp});
+        call.on("data", async (res: SDP__Output) => {
+            if (res.sdp) {
+                resolve(res.sdp)
             }
         })
     
@@ -132,13 +127,111 @@ export const startPreview = async () => {
             // process status
             // console.log(status)
         })
+    })
+
+    return serverSdp
+}
+
+
+export const preparePreview = async () => {
+
+    await startAudio()
+
+    await startOutput()
+    
+    var call = client.AudioData({});
+    call.on("data", async (res: AudioStream__Output) => {
+        if (res.playlist) {
+            // console.log(res.playlist.songs![0])
+        }
+
+    })
+
+    call.on("end", () => {
+        // The server has finished sending data.
+    })
+
+    call.on("error", (err) => {
+        // An error has occurred and the stream is closed.
+        console.log(err)
+        // return
+    })
+
+    call.on("status", (status) => {
+        // process status
+        // console.log(status)
+    })
+    
+    var callOut = client.OutputData({});
+    callOut.on("data", async (res: OutputResponse__Output) => {
+        if (res.time) {
+            // console.log("time: ", res.time)
+        }
+
+        if (res.bitrate) {
+            // console.log("bitrate: ", res.bitrate)
+        }
+
+    })
+
+    callOut.on("end", () => {
+        // The server has finished sending data.
+    })
+
+    callOut.on("error", (err) => {
+        // An error has occurred and the stream is closed.
+        console.log(err)
+
+    })
+
+    callOut.on("status", (status) => {
+        // process status
+        // console.log(status)
+    })
+
+//    const preview: string = await new Promise(resolve => {
+//     var call = client.Preview({sdp: sdp})
+//    })
+
+    // return preview
+}
+
+const startAudio = async () => {
+        // Listen to audio grpc stream.
+    const audio: boolean = await new Promise(resolve => {
+        var call = client.Audio({});
+        call.on("data", async (res: AudioStream__Output) => {
+            if (res.playlist) {
+                // console.log(res)
+            }
+
+            if (res.ready) {
+                resolve(res.ready)
+            }
+        })
+    
+        call.on("end", () => {
+            // The server has finished sending data.
+        })
+    
+        call.on("error", (err) => {
+            // An error has occurred and the stream is closed.
+            console.log(err)
+            resolve(false)
+        })
+    
+        call.on("status", (status) => {
+            // process status
+            // console.log(status)
+        })
     
     })
 
-    console.log(audio)
+    return audio
+}
 
-    // Listen to output grpc stream.
-    const output: string = await new Promise(resolve => {
+const startOutput = async () => {
+    const output: boolean = await new Promise(resolve => {
         var call = client.Output({});
         call.on("data", async (res: OutputResponse__Output) => {
             if (res.time) {
@@ -150,7 +243,7 @@ export const startPreview = async () => {
             }
 
             if (res.ready) {
-                resolve("output ready")
+                resolve(res.ready)
             }
 
         })
@@ -162,6 +255,7 @@ export const startPreview = async () => {
         call.on("error", (err) => {
             // An error has occurred and the stream is closed.
             console.log(err)
+            resolve(false)
 
         })
     
@@ -171,30 +265,6 @@ export const startPreview = async () => {
         })
     })
 
-    console.log(output)
+    return output
 
-    
-    const deadline = new Date()
-    deadline.setSeconds(deadline.getSeconds() + 5)
-
-    const preview: boolean = await new Promise(resolve => {
-        client.waitForReady(deadline, (err) => {
-            if (err) {
-                console.log(err)
-                resolve(false)
-            }
-
-            client.Preview({}, (err, res) => {
-                if (err) {
-                    console.log(err)
-                    resolve(false)
-                }    
-
-                resolve(true)
-            })
-
-        })
-    })
-
-    return preview
 }

@@ -9,7 +9,7 @@ service StreamManagement {
     rpc CurrentSongPlaylist (Empty) returns (SongPlaylist) {};
     rpc UpdateSongPlaylist (SongPlaylist) returns (Empty) {};
     
-    rpc Preview (Empty) returns (Empty) {};
+    rpc Preview (SDP) returns (stream SDP) {};
     
     rpc Audio (Empty) returns (stream AudioStream) {};
     rpc Output (Empty) returns (stream OutputResponse) {};
@@ -44,6 +44,10 @@ message OutputResponse {
 
 message Empty {
 
+}
+
+message SDP {
+    string sdp = 1;
 }
 
 // protoc --go_out=./api/ --go-grpc_out=./api/  proto/songs.proto

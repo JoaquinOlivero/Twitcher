@@ -1,13 +1,22 @@
 import Preview from '@/components/Preview/Preview'
 import Playlist from '@/components/Playlist/Playlist'
+import Controls from '@/components/Controls/Controls'
+import { getCurrentPlaylist } from '@/actions';
+
+export const revalidate = 0;
 
 const Home = async () => {
+    const playlist = await getCurrentPlaylist();
 
     return (
         <div className='w-[99%] h-screen mx-auto flex flex-col'>
 
-            <div className='w-full h-3/5'>
+            <div className='relative w-full h-3/5 flex'>
+                <div className='w-1/4'>
+
+                </div>
                 <Preview />
+                <Controls />
             </div>
 
             <div className='w-full h-2/5 flex items-center'>
@@ -22,7 +31,7 @@ const Home = async () => {
                     </div>
                 </div>
 
-                <Playlist />
+                <Playlist serverPlaylist={playlist} />
 
                 <div className='w-1/4 h-[95%] flex flex-col items-end'>
                     <div className='rounded-t-xl bg-foreground w-[95%] h-full'>

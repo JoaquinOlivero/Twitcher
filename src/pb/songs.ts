@@ -12,6 +12,7 @@ export interface ProtoGrpcType {
     AudioStream: MessageTypeDefinition
     Empty: MessageTypeDefinition
     OutputResponse: MessageTypeDefinition
+    SDP: MessageTypeDefinition
     Song: MessageTypeDefinition
     SongPlaylist: MessageTypeDefinition
     StreamManagement: SubtypeConstructor<typeof grpc.Client, _service_StreamManagementClient> & { service: _service_StreamManagementDefinition }

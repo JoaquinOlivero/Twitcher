@@ -2,6 +2,7 @@ package service
 
 import (
 	"Twitcher/pb"
+	"Twitcher/preview"
 	"bufio"
 	"context"
 	"database/sql"
@@ -50,6 +51,7 @@ type StreamManagementServer struct {
 
 var (
 	audioDataRes = make(chan *pb.AudioStream)
+	audioDataReq = make(chan struct{})
 
 	outputDataRes = make(chan *pb.OutputResponse)
 	outputDataReq = make(chan struct{})
@@ -57,6 +59,7 @@ var (
 
 func (s *StreamManagementServer) AudioData(in *pb.Empty, stream pb.StreamManagement_AudioDataServer) error {
 	for {
+		audioDataReq <- struct{}{}
 		v := <-audioDataRes
 		err := stream.Send(v)
 		if err != nil {
@@ -111,7 +114,11 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 			s.mu.Lock()
 			_, s.playlist.Songs = s.playlist.Songs[0], s.playlist.Songs[1:]
 			s.mu.Unlock()
-			audioDataRes <- &pb.AudioStream{Playlist: &s.playlist}
+			select {
+			case <-audioDataReq:
+				audioDataRes <- &pb.AudioStream{Playlist: &s.playlist}
+			default:
+			}
 
 			// Generate new playlist when there are ten songs left.
 			if len(s.playlist.Songs) == 10 {
@@ -191,7 +198,6 @@ func (s *StreamManagementServer) OutputData(in *pb.Empty, stream pb.StreamManage
 	for {
 		outputDataReq <- struct{}{}
 		v := <-outputDataRes
-		fmt.Println(v)
 		err := stream.Send(v)
 		if err != nil {
 			break
@@ -301,54 +307,120 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 	}
 }
 
-func (s *StreamManagementServer) Preview(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
+func (s *StreamManagementServer) Preview(in *pb.SDP, stream pb.StreamManagement_PreviewServer) error {
 
 	if !s.audioOn || !s.outputOn {
-		return nil, status.Errorf(
+		return status.Errorf(
 			codes.FailedPrecondition,
 			fmt.Sprintln("audio or output video not available to show preview"),
 		)
 	}
 
-	os.RemoveAll("files/stream/preview")
-	os.MkdirAll("files/stream/preview", 0777)
+	// if !s.previewOn {
+	// var wg sync.WaitGroup
+	// wg.Add(1)
 
-	// Ffmpeg instance that streams the piped input to Twitch's rtmp servers.
-	cmd := exec.Command("ffmpeg", "-hide_banner",
-		"-re", "-stream_loop", "1",
-		"-i", "files/stream/output",
-		// "-loglevel", "warning",
-		"-f", "fifo", // Fifo muxer implemented to recover stream in case of failure.
-		"-map", "0:v", "-map", "0:a",
-		"-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header", "-tag:v", "7", "-tag:a", "2",
-		"-c", "copy",
-		"-hls_time", "4",
-		"-hls_list_size", "10",
-		"-hls_flags", "delete_segments",
-		"-f", "hls",
-		"files/stream/preview/master.m3u8",
-	)
+	ch := make(chan string)
+	quit := make(chan int)
 
-	// cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
-	}
+	// go func() {
 
-	err := cmd.Start()
-	if err != nil {
-		panic(err)
-	}
+	// 	// Named pipe
+	// 	previewPipePath := "files/stream/preview"
 
+	// 	err := os.Remove(previewPipePath)
+	// 	if err != nil && !os.IsNotExist(err) {
+	// 		panic(err)
+	// 	}
+
+	// 	err = syscall.Mkfifo(previewPipePath, 0644)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+
+	// 	// Open named preview pipe.
+	// 	previewPipe, err := os.OpenFile("files/stream/preview", os.O_RDWR, os.ModeNamedPipe)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+
+	// 	cmd := exec.Command("ffmpeg", "-hide_banner",
+	// 		"-re", "-stream_loop", "1",
+	// 		"-i", "files/stream/output",
+	// 		// "-loglevel", "warning",
+	// 		// "-f", "fifo", // Fifo muxer implemented to recover stream in case of failure.
+	// 		// "-map", "0:v", "-map", "0:a",
+	// 		// "-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header", "-tag:v", "7", "-tag:a", "2",
+	// 		// "-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header",
+	// 		"-c", "copy",
+	// 		"-max_delay", "0",
+	// 		"-f", "h264", "-",
+	// 	)
+
+	// 	cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
+	// 	cmd.Stdout = previewPipe
+	// 	cmd.SysProcAttr = &syscall.SysProcAttr{
+	// 		Pdeathsig: syscall.SIGKILL,
+	// 	}
+
+	// 	err = cmd.Start()
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+
+	// 	s.mu.Lock()
+	// 	s.previewOn = true
+	// 	s.mu.Unlock()
+
+	// 	wg.Done()
+
+	// 	go func() {
+	// 	ffmpeg:
+	// 		for channel := range quit {
+	// 			if channel == 0 {
+	// 				cmd.Process.Kill()
+	// 				break ffmpeg
+	// 			}
+	// 		}
+	// 	}()
+
+	// 	err = cmd.Wait()
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// }()
+
+	// wg.Wait()
+	// }
 	s.mu.Lock()
 	s.previewOn = true
 	s.mu.Unlock()
 
-	err = cmd.Wait()
-	if err != nil {
-		panic(err)
+	go preview.StartWebRTC(in.Sdp, ch, quit)
+
+	sdp := <-ch
+
+streamLoop:
+	for {
+		select {
+		case <-quit:
+			s.mu.Lock()
+			s.previewOn = false
+			s.mu.Unlock()
+			break streamLoop
+		default:
+		}
+		// stream.Send(&pb.SDP{Sdp: sdp})
+		err := stream.Send(&pb.SDP{Sdp: sdp})
+		if err != nil {
+			s.mu.Lock()
+			s.previewOn = false
+			s.mu.Unlock()
+			break streamLoop
+		}
 	}
 
-	return &pb.Empty{}, nil
+	return nil
 }
 
 func (s *StreamManagementServer) CreateSongPlaylist(ctx context.Context, in *pb.Empty) (*pb.SongPlaylist, error) {

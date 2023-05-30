@@ -36,7 +36,7 @@ type StreamManagementClient interface {
 	CreateSongPlaylist(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*SongPlaylist, error)
 	CurrentSongPlaylist(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*SongPlaylist, error)
 	UpdateSongPlaylist(ctx context.Context, in *SongPlaylist, opts ...grpc.CallOption) (*Empty, error)
-	Preview(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
+	Preview(ctx context.Context, in *SDP, opts ...grpc.CallOption) (StreamManagement_PreviewClient, error)
 	Audio(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_AudioClient, error)
 	Output(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_OutputClient, error)
 	AudioData(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_AudioDataClient, error)
@@ -78,17 +78,40 @@ func (c *streamManagementClient) UpdateSongPlaylist(ctx context.Context, in *Son
 	return out, nil
 }
 
-func (c *streamManagementClient) Preview(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
-	out := new(Empty)
-	err := c.cc.Invoke(ctx, StreamManagement_Preview_FullMethodName, in, out, opts...)
+func (c *streamManagementClient) Preview(ctx context.Context, in *SDP, opts ...grpc.CallOption) (StreamManagement_PreviewClient, error) {
+	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[0], StreamManagement_Preview_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &streamManagementPreviewClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type StreamManagement_PreviewClient interface {
+	Recv() (*SDP, error)
+	grpc.ClientStream
+}
+
+type streamManagementPreviewClient struct {
+	grpc.ClientStream
+}
+
+func (x *streamManagementPreviewClient) Recv() (*SDP, error) {
+	m := new(SDP)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *streamManagementClient) Audio(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_AudioClient, error) {
-	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[0], StreamManagement_Audio_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[1], StreamManagement_Audio_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +143,7 @@ func (x *streamManagementAudioClient) Recv() (*AudioStream, error) {
 }
 
 func (c *streamManagementClient) Output(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_OutputClient, error) {
-	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[1], StreamManagement_Output_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[2], StreamManagement_Output_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +175,7 @@ func (x *streamManagementOutputClient) Recv() (*OutputResponse, error) {
 }
 
 func (c *streamManagementClient) AudioData(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_AudioDataClient, error) {
-	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[2], StreamManagement_AudioData_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[3], StreamManagement_AudioData_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +207,7 @@ func (x *streamManagementAudioDataClient) Recv() (*AudioStream, error) {
 }
 
 func (c *streamManagementClient) OutputData(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_OutputDataClient, error) {
-	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[3], StreamManagement_OutputData_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[4], StreamManagement_OutputData_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +245,7 @@ type StreamManagementServer interface {
 	CreateSongPlaylist(context.Context, *Empty) (*SongPlaylist, error)
 	CurrentSongPlaylist(context.Context, *Empty) (*SongPlaylist, error)
 	UpdateSongPlaylist(context.Context, *SongPlaylist) (*Empty, error)
-	Preview(context.Context, *Empty) (*Empty, error)
+	Preview(*SDP, StreamManagement_PreviewServer) error
 	Audio(*Empty, StreamManagement_AudioServer) error
 	Output(*Empty, StreamManagement_OutputServer) error
 	AudioData(*Empty, StreamManagement_AudioDataServer) error
@@ -243,8 +266,8 @@ func (UnimplementedStreamManagementServer) CurrentSongPlaylist(context.Context, 
 func (UnimplementedStreamManagementServer) UpdateSongPlaylist(context.Context, *SongPlaylist) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateSongPlaylist not implemented")
 }
-func (UnimplementedStreamManagementServer) Preview(context.Context, *Empty) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Preview not implemented")
+func (UnimplementedStreamManagementServer) Preview(*SDP, StreamManagement_PreviewServer) error {
+	return status.Errorf(codes.Unimplemented, "method Preview not implemented")
 }
 func (UnimplementedStreamManagementServer) Audio(*Empty, StreamManagement_AudioServer) error {
 	return status.Errorf(codes.Unimplemented, "method Audio not implemented")
@@ -325,22 +348,25 @@ func _StreamManagement_UpdateSongPlaylist_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
-func _StreamManagement_Preview_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
-	if err := dec(in); err != nil {
-		return nil, err
+func _StreamManagement_Preview_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SDP)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(StreamManagementServer).Preview(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: StreamManagement_Preview_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StreamManagementServer).Preview(ctx, req.(*Empty))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(StreamManagementServer).Preview(m, &streamManagementPreviewServer{stream})
+}
+
+type StreamManagement_PreviewServer interface {
+	Send(*SDP) error
+	grpc.ServerStream
+}
+
+type streamManagementPreviewServer struct {
+	grpc.ServerStream
+}
+
+func (x *streamManagementPreviewServer) Send(m *SDP) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _StreamManagement_Audio_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -446,12 +472,13 @@ var StreamManagement_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "UpdateSongPlaylist",
 			Handler:    _StreamManagement_UpdateSongPlaylist_Handler,
 		},
-		{
-			MethodName: "Preview",
-			Handler:    _StreamManagement_Preview_Handler,
-		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Preview",
+			Handler:       _StreamManagement_Preview_Handler,
+			ServerStreams: true,
+		},
 		{
 			StreamName:    "Audio",
 			Handler:       _StreamManagement_Audio_Handler,

@@ -7,11 +7,11 @@ const Preview = () => {
     const [muted, setMuted] = useState<boolean>(true)
     const [volume, setVolume] = useState<number>(0.1)
 
-    useEffect(() => {
-        if (isLoaded === false) {
-            setIsLoaded(true)
-        }
-    }, [isLoaded])
+    // useEffect(() => {
+    //     if (isLoaded === false) {
+    //         setIsLoaded(true)
+    //     }
+    // }, [isLoaded])
 
     // const handleOnError = (error: any) => {
     //     console.log(error)
@@ -20,7 +20,6 @@ const Preview = () => {
 
     return (
         <div className="w-1/2 h-full mx-auto relative">
-            {/* <iframe src="https://player.twitch.tv/?channel=beats10&parent=test.joaquinolivero.com&muted=true" height="100%" width="100%"></iframe> */}
             <div className="bg-foreground w-full h-full z-0 rounded-b-xl"></div>
 
             {/* Controls */}
@@ -40,10 +39,11 @@ const Preview = () => {
                 }
             </div>
 
-            {
+            {/* {
                 isLoaded ?
                     <ReactPlayer
-                        url="/api/preview/master.m3u8"
+                        // url="/api/preview/master.m3u8"
+                        url="/preview"
                         playing={true}
                         controls={false}
                         volume={volume}
@@ -51,20 +51,24 @@ const Preview = () => {
                         width="100%"
                         height="100%"
                         // onError={(error) => handleOnError(error)}
-                        config={{
-                            file: {
-                                forceSafariHLS: true,
-                                hlsOptions: {
-                                    "lowLatencyMode": true
-                                }
-                            }
-                        }}
+                        // config={{
+                        //     file: {
+                        //         forceSafariHLS: true,
+                        //         hlsOptions: {
+                        //             "lowLatencyMode": true
+                        //         }
+                        //     }
+                        // }}
 
                         style={{ position: "absolute", top: "0" }}
                     />
                     :
                     null
-            }
+            } */}
+
+            <div id="remoteVideos" className="absolute top-0 w-full h-full">
+
+            </div>
 
         </div >
     )
