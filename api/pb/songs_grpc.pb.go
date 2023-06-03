@@ -23,6 +23,7 @@ const (
 	StreamManagement_CurrentSongPlaylist_FullMethodName = "/service.StreamManagement/CurrentSongPlaylist"
 	StreamManagement_UpdateSongPlaylist_FullMethodName  = "/service.StreamManagement/UpdateSongPlaylist"
 	StreamManagement_Preview_FullMethodName             = "/service.StreamManagement/Preview"
+	StreamManagement_StartTwitch_FullMethodName         = "/service.StreamManagement/StartTwitch"
 	StreamManagement_Audio_FullMethodName               = "/service.StreamManagement/Audio"
 	StreamManagement_Output_FullMethodName              = "/service.StreamManagement/Output"
 	StreamManagement_AudioData_FullMethodName           = "/service.StreamManagement/AudioData"
@@ -37,6 +38,7 @@ type StreamManagementClient interface {
 	CurrentSongPlaylist(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*SongPlaylist, error)
 	UpdateSongPlaylist(ctx context.Context, in *SongPlaylist, opts ...grpc.CallOption) (*Empty, error)
 	Preview(ctx context.Context, in *SDP, opts ...grpc.CallOption) (StreamManagement_PreviewClient, error)
+	StartTwitch(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 	Audio(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_AudioClient, error)
 	Output(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_OutputClient, error)
 	AudioData(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_AudioDataClient, error)
@@ -108,6 +110,15 @@ func (x *streamManagementPreviewClient) Recv() (*SDP, error) {
 		return nil, err
 	}
 	return m, nil
+}
+
+func (c *streamManagementClient) StartTwitch(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, StreamManagement_StartTwitch_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *streamManagementClient) Audio(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_AudioClient, error) {
@@ -246,6 +257,7 @@ type StreamManagementServer interface {
 	CurrentSongPlaylist(context.Context, *Empty) (*SongPlaylist, error)
 	UpdateSongPlaylist(context.Context, *SongPlaylist) (*Empty, error)
 	Preview(*SDP, StreamManagement_PreviewServer) error
+	StartTwitch(context.Context, *Empty) (*Empty, error)
 	Audio(*Empty, StreamManagement_AudioServer) error
 	Output(*Empty, StreamManagement_OutputServer) error
 	AudioData(*Empty, StreamManagement_AudioDataServer) error
@@ -268,6 +280,9 @@ func (UnimplementedStreamManagementServer) UpdateSongPlaylist(context.Context, *
 }
 func (UnimplementedStreamManagementServer) Preview(*SDP, StreamManagement_PreviewServer) error {
 	return status.Errorf(codes.Unimplemented, "method Preview not implemented")
+}
+func (UnimplementedStreamManagementServer) StartTwitch(context.Context, *Empty) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StartTwitch not implemented")
 }
 func (UnimplementedStreamManagementServer) Audio(*Empty, StreamManagement_AudioServer) error {
 	return status.Errorf(codes.Unimplemented, "method Audio not implemented")
@@ -367,6 +382,24 @@ type streamManagementPreviewServer struct {
 
 func (x *streamManagementPreviewServer) Send(m *SDP) error {
 	return x.ServerStream.SendMsg(m)
+}
+
+func _StreamManagement_StartTwitch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StreamManagementServer).StartTwitch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StreamManagement_StartTwitch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StreamManagementServer).StartTwitch(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _StreamManagement_Audio_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -471,6 +504,10 @@ var StreamManagement_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateSongPlaylist",
 			Handler:    _StreamManagement_UpdateSongPlaylist_Handler,
+		},
+		{
+			MethodName: "StartTwitch",
+			Handler:    _StreamManagement_StartTwitch_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

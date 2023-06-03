@@ -10,6 +10,7 @@ service StreamManagement {
     rpc UpdateSongPlaylist (SongPlaylist) returns (Empty) {};
     
     rpc Preview (SDP) returns (stream SDP) {};
+    rpc StartTwitch (Empty) returns (Empty) {};
     
     rpc Audio (Empty) returns (stream AudioStream) {};
     rpc Output (Empty) returns (stream OutputResponse) {};

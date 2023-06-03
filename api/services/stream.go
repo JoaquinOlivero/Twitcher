@@ -2,7 +2,6 @@ package service
 
 import (
 	"Twitcher/pb"
-	"Twitcher/preview"
 	"bufio"
 	"context"
 	"database/sql"
@@ -11,7 +10,6 @@ import (
 	"image/draw"
 	"image/jpeg"
 	"image/png"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -42,11 +40,11 @@ type Song struct {
 
 type StreamManagementServer struct {
 	pb.UnimplementedStreamManagementServer
-	playlist  pb.SongPlaylist
-	mu        sync.Mutex
-	audioOn   bool
-	outputOn  bool
-	previewOn bool
+	playlist pb.SongPlaylist
+	mu       sync.Mutex
+	audioOn  bool
+	outputOn bool
+	// audioPipe io.ReadCloser
 }
 
 var (
@@ -55,6 +53,9 @@ var (
 
 	outputDataRes = make(chan *pb.OutputResponse)
 	outputDataReq = make(chan struct{})
+
+	sdp                 = make(chan string, 300)
+	sdpForClientChannel = make(chan string, 300)
 )
 
 func (s *StreamManagementServer) AudioData(in *pb.Empty, stream pb.StreamManagement_AudioDataServer) error {
@@ -103,6 +104,10 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 	if err != nil {
 		panic(err)
 	}
+	// spr, spw, err := os.Pipe()
+	// if err != nil {
+	// 	return err
+	// }
 
 	i := 1
 	for {
@@ -114,6 +119,7 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 			s.mu.Lock()
 			_, s.playlist.Songs = s.playlist.Songs[0], s.playlist.Songs[1:]
 			s.mu.Unlock()
+
 			select {
 			case <-audioDataReq:
 				audioDataRes <- &pb.AudioStream{Playlist: &s.playlist}
@@ -141,49 +147,80 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 			panic(err)
 		}
 
+		cmd := exec.Command("ffmpeg",
+			"-re",
+			"-i", "files/songs/"+song.Audio,
+			// "-i", "pipe:0",
+			// "-c:a", "libopus", "-page_duration", "1000",
+			// "-f", "ogg", "-",
+			"-c:a", "copy",
+			"-f", "mp3", "-",
+		)
+
+		// s.audioPipe, _ = cmd.StdoutPipe()
+
+		// s.audioPipe = io.NopCloser(test)
+		// cmd.Stderr = os.Stderr
+		// cmd.Stdin = spr
+		cmd.Stdout = audioPipe
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Pdeathsig: syscall.SIGKILL,
+		}
+
+		cmd.Start()
+
+		if i > 0 {
+			// Let client know that the audio is ready to be used in the final output.
+			stream.Send(&pb.AudioStream{Ready: true})
+			i--
+		}
+
+		cmd.Wait()
+
 		// Buffer audio file in real-time to named pipe.
-		file, err := os.Open("files/songs/" + song.Audio)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
+		// file, err := os.Open("files/songs/" + song.Audio)
+		// if err != nil {
+		// 	return err
+		// }
+		// defer file.Close()
 
-		// Buffer with a size corresponding to the sample rate of the audio file which is 44100 Hz. All audio files have been normalize to 44100 Hz.
-		r := bufio.NewReader(file)
-		buffer := make([]byte, 44100)
+		// // Buffer with a size corresponding to the sample rate of the audio file which is 44100 Hz. All audio files have been normalize to 44100 Hz.
+		// r := bufio.NewReader(file)
+		// buffer := make([]byte, 44100)
 
-		for {
-			n, err := io.ReadFull(r, buffer[:cap(buffer)])
-			buffer = buffer[:n]
+		// for {
+		// 	s.audioPipe = spr
+		// 	n, err := io.ReadFull(r, buffer[:cap(buffer)])
+		// 	buffer = buffer[:n]
 
-			if err != nil {
-				// This is an expected EOF error because it's thrown when no more input is available and it's been made to signal a graceful end of input.
-				// Basically the file has been completely read and therefore everything is OK.
-				if err == io.EOF {
-					break
-				}
+		// 	if err != nil {
+		// 		// This is an expected EOF error because it's thrown when no more input is available and it's been made to signal a graceful end of input.
+		// 		// Basically the file has been completely read and therefore everything is OK.
+		// 		if err == io.EOF {
+		// 			break
+		// 		}
 
-				// Unlike the previous error, an unexpected EOF means that an EOF was encountered in the middle of reading a fixed-size block or data structure.
-				if err != io.ErrUnexpectedEOF {
-					fmt.Fprintln(os.Stderr, err)
-					break
-				}
-			}
+		// 		// Unlike the previous error, an unexpected EOF means that an EOF was encountered in the middle of reading a fixed-size block or data structure.
+		// 		if err != io.ErrUnexpectedEOF {
+		// 			fmt.Fprintln(os.Stderr, err)
+		// 			break
+		// 		}
+		// 	}
 
-			// process buf
-			_, err = audioPipe.Write(buffer)
-			if err != nil {
-				return err
-			}
+		// 	// process buf
+		// 	_, err = spw.Write(buffer)
+		// 	if err != nil {
+		// 		return err
+		// 	}
 
-			if i > 0 {
-				// Let client know that the audio is ready to be used in the final output.
-				stream.Send(&pb.AudioStream{Ready: true})
-				i--
-			}
-		}
+		// 	if i > 0 {
+		// 		// Let client know that the audio is ready to be used in the final output.
+		// 		stream.Send(&pb.AudioStream{Ready: true})
+		// 		i--
+		// 	}
+		// }
 
-		file.Close()
+		// file.Close()
 
 		if len(s.playlist.Songs) == 0 {
 			break
@@ -226,85 +263,73 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 	s.outputOn = true
 	s.mu.Unlock()
 
-	// Named pipe
-	outputPipePath := "files/stream/output"
-
-	err := os.Remove(outputPipePath)
-	if err != nil && !os.IsNotExist(err) {
-		panic(err)
-	}
-
-	err = syscall.Mkfifo(outputPipePath, 0644)
+	err := manageNamedPipes()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	for {
-		// Open named output pipe.
-		outputPipe, err := os.OpenFile("files/stream/output", os.O_RDWR, os.ModeNamedPipe)
-		if err != nil {
-			panic(err)
-		}
+	cmd := exec.Command("ffmpeg",
+		"-hide_banner",
+		"-y", "-re",
+		"-stream_loop", "-1",
+		"-i", "files/stream/test.mp4", // Background video
+		"-i", "files/stream/audio", // Audio input pipe.
+		"-f", "fifo", "-fifo_format", "tee", // Fifo muxer implemented to recover stream in case of failure.
+		"-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header",
+		"-map", "0:v", "-map", "1:a",
+		"-c:v", "copy", // Encode new video with overlays.
+		"-c:a", "libopus",
+		"-b:a", "128k", "-vbr", "on", "-compression_level", "10", "-frame_duration", "60",
+		"-f", "tee",
+		`[select=\'a:0\':page_duration=500:f=ogg]files/stream/previewAudio
+		|
+		[select=\'v:0\':f=h264]files/stream/previewVideo`,
+		// |
+		// [f=mpegts:select=\'v:0,a\']files/stream/streamOutput`,
+	)
 
-		cmd := exec.Command("ffmpeg",
-			"-hide_banner",
-			"-y", "-re",
-			"-stream_loop", "-1",
-			"-i", "files/stream/sunset-720p.mp4", // Background video
-			"-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
-			"-f", "image2", "-loop", "1", "-i", "files/stream/alerts/frames/%d.png",
-			"-filter_complex", "[0][1]overlay=5:5[v1];[v1][2]overlay=W-w+10:H-h+60", // Filter that actually places the overlays over the video.
-			"-i", "files/stream/audio", // Audio input pipe.
-			"-f", "fifo", // Fifo muxer implemented to recover stream in case of failure.
-			"-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header", "-tag:v", "7", "-tag:a", "2",
-			"-g", "50",
-			"-keyint_min", "50", "-force_key_frames", "expr:gte(t,n_forced*2)",
-			"-c:v", "libx264", // Encode new video with overlays.
-			"-c:a", "copy", // Copy the single audio stream.
-			// "-loglevel", "warning",
-			"-f", "mpegts", "-", // Pipe the result to the ffmpeg instance stdout.
-		)
+	// cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
+	stdErr, _ := cmd.StderrPipe() // ffmpeg logs everything to stderr.
 
-		// cmd.Stderr = os.Stderr        // ffmpeg logs everything to stderr.
-		stdErr, _ := cmd.StderrPipe() // ffmpeg logs everything to stderr.
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGKILL,
+	}
 
-		cmd.Stdout = outputPipe // Write the stdout the the "output" pipe.
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Pdeathsig: syscall.SIGKILL,
-		}
+	cmd.Start()
+	stream.Send(&pb.OutputResponse{Ready: true})
 
-		cmd.Start()
-		stream.Send(&pb.OutputResponse{Ready: true})
-		scanner := bufio.NewScanner(stdErr)
-		scanner.Split(bufio.ScanWords)
+	go Broadcast(sdp, sdpForClientChannel)
 
-		for scanner.Scan() {
-			var bitrateLine, timeLine string
+	scanner := bufio.NewScanner(stdErr)
+	scanner.Split(bufio.ScanWords)
 
-			m := scanner.Text()
+	for scanner.Scan() {
+		var bitrateLine, timeLine string
 
-			// Get bitrate
-			if strings.HasPrefix(m, "bitrate") || strings.HasPrefix(m, "time") {
-				_, bitrateLine, _ = strings.Cut(m, "bitrate=")
-				_, timeLine, _ = strings.Cut(m, "time=")
+		m := scanner.Text()
 
-				if bitrateLine != "" || timeLine != "" {
-					// stream.Send(&pb.OutputResponse{Bitrate: bitrateLine, Time: timeLine})
-					select {
-					case <-outputDataReq:
-						outputDataRes <- &pb.OutputResponse{Bitrate: bitrateLine, Time: timeLine}
-					default:
+		// Get bitrate
+		if strings.HasPrefix(m, "bitrate") || strings.HasPrefix(m, "time") {
+			_, bitrateLine, _ = strings.Cut(m, "bitrate=")
+			_, timeLine, _ = strings.Cut(m, "time=")
 
-					}
+			if bitrateLine != "" || timeLine != "" {
+				// stream.Send(&pb.OutputResponse{Bitrate: bitrateLine, Time: timeLine})
+				select {
+				case <-outputDataReq:
+					outputDataRes <- &pb.OutputResponse{Bitrate: bitrateLine, Time: timeLine}
+				default:
 
 				}
-			}
 
+			}
 		}
 
-		cmd.Wait()
-
 	}
+
+	cmd.Wait()
+
+	return nil
 }
 
 func (s *StreamManagementServer) Preview(in *pb.SDP, stream pb.StreamManagement_PreviewServer) error {
@@ -316,111 +341,48 @@ func (s *StreamManagementServer) Preview(in *pb.SDP, stream pb.StreamManagement_
 		)
 	}
 
-	// if !s.previewOn {
-	// var wg sync.WaitGroup
-	// wg.Add(1)
+	sdp <- in.Sdp
 
-	ch := make(chan string)
-	quit := make(chan int)
-
-	// go func() {
-
-	// 	// Named pipe
-	// 	previewPipePath := "files/stream/preview"
-
-	// 	err := os.Remove(previewPipePath)
-	// 	if err != nil && !os.IsNotExist(err) {
-	// 		panic(err)
-	// 	}
-
-	// 	err = syscall.Mkfifo(previewPipePath, 0644)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-
-	// 	// Open named preview pipe.
-	// 	previewPipe, err := os.OpenFile("files/stream/preview", os.O_RDWR, os.ModeNamedPipe)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-
-	// 	cmd := exec.Command("ffmpeg", "-hide_banner",
-	// 		"-re", "-stream_loop", "1",
-	// 		"-i", "files/stream/output",
-	// 		// "-loglevel", "warning",
-	// 		// "-f", "fifo", // Fifo muxer implemented to recover stream in case of failure.
-	// 		// "-map", "0:v", "-map", "0:a",
-	// 		// "-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header", "-tag:v", "7", "-tag:a", "2",
-	// 		// "-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header",
-	// 		"-c", "copy",
-	// 		"-max_delay", "0",
-	// 		"-f", "h264", "-",
-	// 	)
-
-	// 	cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
-	// 	cmd.Stdout = previewPipe
-	// 	cmd.SysProcAttr = &syscall.SysProcAttr{
-	// 		Pdeathsig: syscall.SIGKILL,
-	// 	}
-
-	// 	err = cmd.Start()
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-
-	// 	s.mu.Lock()
-	// 	s.previewOn = true
-	// 	s.mu.Unlock()
-
-	// 	wg.Done()
-
-	// 	go func() {
-	// 	ffmpeg:
-	// 		for channel := range quit {
-	// 			if channel == 0 {
-	// 				cmd.Process.Kill()
-	// 				break ffmpeg
-	// 			}
-	// 		}
-	// 	}()
-
-	// 	err = cmd.Wait()
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// }()
-
-	// wg.Wait()
-	// }
-	s.mu.Lock()
-	s.previewOn = true
-	s.mu.Unlock()
-
-	go preview.StartWebRTC(in.Sdp, ch, quit)
-
-	sdp := <-ch
-
+	sdpForClient := <-sdpForClientChannel
 streamLoop:
 	for {
-		select {
-		case <-quit:
-			s.mu.Lock()
-			s.previewOn = false
-			s.mu.Unlock()
-			break streamLoop
-		default:
-		}
-		// stream.Send(&pb.SDP{Sdp: sdp})
-		err := stream.Send(&pb.SDP{Sdp: sdp})
+		err := stream.Send(&pb.SDP{Sdp: sdpForClient})
 		if err != nil {
-			s.mu.Lock()
-			s.previewOn = false
-			s.mu.Unlock()
 			break streamLoop
 		}
 	}
 
 	return nil
+}
+
+func (s *StreamManagementServer) StartTwitch(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
+	cmd := exec.Command("ffmpeg", "-hide_banner",
+		"-re", "-stream_loop", "-1",
+		"-i", "files/stream/streamOutput",
+		"-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
+		"-f", "image2", "-loop", "1", "-i", "files/stream/alerts/frames/%d.png",
+		"-filter_complex", "[0][1]overlay=5:5[v1];[v1][2]overlay=W-w+10:H-h+60[vout]", // Filter that actually places the overlays over the video.
+		// "-loglevel", "warning",
+		"-f", "fifo", "-fifo_format", "flv", // Fifo muxer implemented to recover stream in case a failure occurs.
+		"-map", "[vout]",
+		"-map", "0:a",
+		// "-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header", "-tag:v", "7", "-tag:a", "2",
+		"-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header",
+		"-g", "50",
+		"-keyint_min", "50", "-force_key_frames", "expr:gte(t,n_forced*2)",
+		"-c:v", "libx264",
+		"-acodec", "libmp3lame", "-q:a", "0",
+		"-flvflags", "no_duration_filesize",
+		"rtmp://bue01.contribute.live-video.net/app/live_198642898_h7vzj8LGGrSS3UVIkMomDHKdWEf2VA",
+	)
+
+	cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGKILL,
+	}
+
+	cmd.Run()
+	return &pb.Empty{}, nil
 }
 
 func (s *StreamManagementServer) CreateSongPlaylist(ctx context.Context, in *pb.Empty) (*pb.SongPlaylist, error) {
@@ -606,6 +568,54 @@ func addText(img *image.RGBA, text string, fontFamily []byte, fontSize float64, 
 		Dot:  fixed.P(x, y),
 	}
 	d.DrawString(text)
+
+	return nil
+}
+
+func manageNamedPipes() error {
+	// Named pipe
+	streamOutput := "files/stream/streamOutput"
+
+	// Remove the named pipe if it already exists.
+	err := os.Remove(streamOutput)
+	if err != nil && !os.IsNotExist(err) {
+		panic(err)
+	}
+
+	// Create named pipe.
+	err = syscall.Mkfifo(streamOutput, 0777)
+	if err != nil {
+		panic(err)
+	}
+
+	// Named pipe
+	previewAudioPipePath := "files/stream/previewAudio"
+
+	// Remove the named pipe if it already exists.
+	err = os.Remove(previewAudioPipePath)
+	if err != nil && !os.IsNotExist(err) {
+		panic(err)
+	}
+
+	// Create named pipe.
+	err = syscall.Mkfifo(previewAudioPipePath, 0777)
+	if err != nil {
+		panic(err)
+	}
+
+	previewOutput := "files/stream/previewVideo"
+
+	// Remove the named pipe if it already exists.
+	err = os.Remove(previewOutput)
+	if err != nil && !os.IsNotExist(err) {
+		panic(err)
+	}
+
+	// Create named pipe.
+	err = syscall.Mkfifo(previewOutput, 0777)
+	if err != nil {
+		panic(err)
+	}
 
 	return nil
 }

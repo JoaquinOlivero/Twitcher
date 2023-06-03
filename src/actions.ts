@@ -189,6 +189,83 @@ export const preparePreview = async () => {
         // console.log(status)
     })
 
+}
+
+
+export const startStream = async () => {
+
+    await startAudio()
+
+    await startOutput()
+    
+    var call = client.AudioData({});
+    call.on("data", async (res: AudioStream__Output) => {
+        if (res.playlist) {
+            // console.log(res.playlist.songs![0])
+        }
+
+    })
+
+    call.on("end", () => {
+        // The server has finished sending data.
+    })
+
+    call.on("error", (err) => {
+        // An error has occurred and the stream is closed.
+        console.log(err)
+        // return
+    })
+
+    call.on("status", (status) => {
+        // process status
+        // console.log(status)
+    })
+    
+    var callOut = client.OutputData({});
+    callOut.on("data", async (res: OutputResponse__Output) => {
+        if (res.time) {
+            // console.log("time: ", res.time)
+        }
+
+        if (res.bitrate) {
+            // console.log("bitrate: ", res.bitrate)
+        }
+
+    })
+
+    callOut.on("end", () => {
+        // The server has finished sending data.
+    })
+
+    callOut.on("error", (err) => {
+        // An error has occurred and the stream is closed.
+        console.log(err)
+
+    })
+
+    callOut.on("status", (status) => {
+        // process status
+        // console.log(status)
+    })
+
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    client.waitForReady(deadline, (err) => {
+        if (err) {
+            console.log(err)
+            return
+        }
+
+        client.StartTwitch({}, (err, res) => {
+            if (err) {
+                console.log(err)
+                return
+            }
+            console.log(res)
+        })
+    })
+
 //    const preview: string = await new Promise(resolve => {
 //     var call = client.Preview({sdp: sdp})
 //    })
