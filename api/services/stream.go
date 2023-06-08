@@ -2,6 +2,7 @@ package service
 
 import (
 	"Twitcher/pb"
+	"Twitcher/twitchApi"
 	"bufio"
 	"context"
 	"database/sql"
@@ -104,10 +105,6 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 	if err != nil {
 		panic(err)
 	}
-	// spr, spw, err := os.Pipe()
-	// if err != nil {
-	// 	return err
-	// }
 
 	i := 1
 	for {
@@ -157,11 +154,6 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 			"-f", "mp3", "-",
 		)
 
-		// s.audioPipe, _ = cmd.StdoutPipe()
-
-		// s.audioPipe = io.NopCloser(test)
-		// cmd.Stderr = os.Stderr
-		// cmd.Stdin = spr
 		cmd.Stdout = audioPipe
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Pdeathsig: syscall.SIGKILL,
@@ -176,51 +168,6 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 		}
 
 		cmd.Wait()
-
-		// Buffer audio file in real-time to named pipe.
-		// file, err := os.Open("files/songs/" + song.Audio)
-		// if err != nil {
-		// 	return err
-		// }
-		// defer file.Close()
-
-		// // Buffer with a size corresponding to the sample rate of the audio file which is 44100 Hz. All audio files have been normalize to 44100 Hz.
-		// r := bufio.NewReader(file)
-		// buffer := make([]byte, 44100)
-
-		// for {
-		// 	s.audioPipe = spr
-		// 	n, err := io.ReadFull(r, buffer[:cap(buffer)])
-		// 	buffer = buffer[:n]
-
-		// 	if err != nil {
-		// 		// This is an expected EOF error because it's thrown when no more input is available and it's been made to signal a graceful end of input.
-		// 		// Basically the file has been completely read and therefore everything is OK.
-		// 		if err == io.EOF {
-		// 			break
-		// 		}
-
-		// 		// Unlike the previous error, an unexpected EOF means that an EOF was encountered in the middle of reading a fixed-size block or data structure.
-		// 		if err != io.ErrUnexpectedEOF {
-		// 			fmt.Fprintln(os.Stderr, err)
-		// 			break
-		// 		}
-		// 	}
-
-		// 	// process buf
-		// 	_, err = spw.Write(buffer)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-
-		// 	if i > 0 {
-		// 		// Let client know that the audio is ready to be used in the final output.
-		// 		stream.Send(&pb.AudioStream{Ready: true})
-		// 		i--
-		// 	}
-		// }
-
-		// file.Close()
 
 		if len(s.playlist.Songs) == 0 {
 			break
@@ -283,9 +230,9 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 		"-f", "tee",
 		`[select=\'a:0\':page_duration=500:f=ogg]files/stream/previewAudio
 		|
-		[select=\'v:0\':f=h264]files/stream/previewVideo`,
-		// |
-		// [f=mpegts:select=\'v:0,a\']files/stream/streamOutput`,
+		[select=\'v:0\':f=h264]files/stream/previewVideo
+		|
+		[f=nut:select=\'v:0,a\']files/stream/streamOutput`,
 	)
 
 	// cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
@@ -314,7 +261,6 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 			_, timeLine, _ = strings.Cut(m, "time=")
 
 			if bitrateLine != "" || timeLine != "" {
-				// stream.Send(&pb.OutputResponse{Bitrate: bitrateLine, Time: timeLine})
 				select {
 				case <-outputDataReq:
 					outputDataRes <- &pb.OutputResponse{Bitrate: bitrateLine, Time: timeLine}
@@ -356,12 +302,22 @@ streamLoop:
 }
 
 func (s *StreamManagementServer) StartTwitch(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
+	// Enable alert notifications
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go twitchApi.Alerts(&wg)
+
+	wg.Wait()
+
 	cmd := exec.Command("ffmpeg", "-hide_banner",
 		"-re", "-stream_loop", "-1",
 		"-i", "files/stream/streamOutput",
 		"-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
-		"-f", "image2", "-loop", "1", "-i", "files/stream/alerts/frames/%d.png",
+		// "-f", "image2", "-loop", "1", "-i", "files/stream/alerts/frames/%d.png",
+		"-thread_queue_size", "256", "-i", "files/stream/alert",
 		"-filter_complex", "[0][1]overlay=5:5[v1];[v1][2]overlay=W-w+10:H-h+60[vout]", // Filter that actually places the overlays over the video.
+		// "-filter_complex", "[0][1]overlay=5:5[vout]", // Filter that actually places the overlays over the video.
 		// "-loglevel", "warning",
 		"-f", "fifo", "-fifo_format", "flv", // Fifo muxer implemented to recover stream in case a failure occurs.
 		"-map", "[vout]",
