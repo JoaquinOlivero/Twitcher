@@ -11,11 +11,11 @@ import (
 	"image/draw"
 	"image/jpeg"
 	"image/png"
+	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -45,7 +45,7 @@ type StreamManagementServer struct {
 	mu       sync.Mutex
 	audioOn  bool
 	outputOn bool
-	// audioPipe io.ReadCloser
+	streamOn bool
 }
 
 var (
@@ -57,6 +57,8 @@ var (
 
 	sdp                 = make(chan string, 300)
 	sdpForClientChannel = make(chan string, 300)
+
+	sr, sw = io.Pipe()
 )
 
 func (s *StreamManagementServer) AudioData(in *pb.Empty, stream pb.StreamManagement_AudioDataServer) error {
@@ -232,11 +234,12 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 		|
 		[select=\'v:0\':f=h264]files/stream/previewVideo
 		|
-		[f=nut:select=\'v:0,a\']files/stream/streamOutput`,
+		[f=mpegts:select=\'v:0,a\']pipe:1`,
 	)
-
-	// cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
-	stdErr, _ := cmd.StderrPipe() // ffmpeg logs everything to stderr.
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		panic(err)
+	}
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
@@ -247,31 +250,43 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 
 	go Broadcast(sdp, sdpForClientChannel)
 
-	scanner := bufio.NewScanner(stdErr)
-	scanner.Split(bufio.ScanWords)
+	go func() {
 
-	for scanner.Scan() {
-		var bitrateLine, timeLine string
+		if !s.streamOn {
+			r := bufio.NewReader(stdout)
+			buffer := make([]byte, 2*1024*1024)
+			for {
+				r.Discard(r.Size())
+				n, err := io.ReadFull(r, buffer[:cap(buffer)-cap(buffer)/2])
+				buffer = buffer[:n]
 
-		m := scanner.Text()
+				if err != nil {
+					// This is an expected EOF error because it's thrown when no more input is available and it's been made to signal a graceful end of input.
+					// Basically the file has been completely read and therefore everything is OK.
+					if err == io.EOF {
+						break
+					}
 
-		// Get bitrate
-		if strings.HasPrefix(m, "bitrate") || strings.HasPrefix(m, "time") {
-			_, bitrateLine, _ = strings.Cut(m, "bitrate=")
-			_, timeLine, _ = strings.Cut(m, "time=")
-
-			if bitrateLine != "" || timeLine != "" {
-				select {
-				case <-outputDataReq:
-					outputDataRes <- &pb.OutputResponse{Bitrate: bitrateLine, Time: timeLine}
-				default:
-
+					// Unlike the previous error, an unexpected EOF means that an EOF was encountered in the middle of reading a fixed-size block or data structure.
+					if err != io.ErrUnexpectedEOF {
+						fmt.Fprintln(os.Stderr, err)
+						break
+					}
 				}
-
+				if s.streamOn {
+					break
+				} else {
+					continue
+				}
 			}
 		}
 
-	}
+		_, err := io.Copy(sw, stdout)
+		if err != nil {
+			panic(err)
+		}
+
+	}()
 
 	cmd.Wait()
 
@@ -302,6 +317,17 @@ streamLoop:
 }
 
 func (s *StreamManagementServer) StartTwitch(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
+	if s.streamOn {
+		return &pb.Empty{}, status.Errorf(
+			codes.FailedPrecondition,
+			fmt.Sprintln("stream has already started."),
+		)
+	}
+
+	s.mu.Lock()
+	s.streamOn = true
+	s.mu.Unlock()
+
 	// Enable alert notifications
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -312,17 +338,13 @@ func (s *StreamManagementServer) StartTwitch(ctx context.Context, in *pb.Empty) 
 
 	cmd := exec.Command("ffmpeg", "-hide_banner",
 		"-re", "-stream_loop", "-1",
-		"-i", "files/stream/streamOutput",
+		"-i", "pipe:0",
 		"-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
-		// "-f", "image2", "-loop", "1", "-i", "files/stream/alerts/frames/%d.png",
 		"-thread_queue_size", "256", "-i", "files/stream/alert",
 		"-filter_complex", "[0][1]overlay=5:5[v1];[v1][2]overlay=W-w+10:H-h+60[vout]", // Filter that actually places the overlays over the video.
-		// "-filter_complex", "[0][1]overlay=5:5[vout]", // Filter that actually places the overlays over the video.
-		// "-loglevel", "warning",
 		"-f", "fifo", "-fifo_format", "flv", // Fifo muxer implemented to recover stream in case a failure occurs.
 		"-map", "[vout]",
 		"-map", "0:a",
-		// "-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header", "-tag:v", "7", "-tag:a", "2",
 		"-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header",
 		"-g", "50",
 		"-keyint_min", "50", "-force_key_frames", "expr:gte(t,n_forced*2)",
@@ -332,12 +354,13 @@ func (s *StreamManagementServer) StartTwitch(ctx context.Context, in *pb.Empty) 
 		"rtmp://bue01.contribute.live-video.net/app/live_198642898_h7vzj8LGGrSS3UVIkMomDHKdWEf2VA",
 	)
 
-	cmd.Stderr = os.Stderr // ffmpeg logs everything to stderr.
+	cmd.Stdin = sr
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}
 
 	cmd.Run()
+
 	return &pb.Empty{}, nil
 }
 
