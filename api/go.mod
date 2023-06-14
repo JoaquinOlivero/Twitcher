@@ -7,6 +7,7 @@ require (
 	github.com/google/renameio v1.0.1
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
+	github.com/pion/interceptor v0.1.17
 	github.com/pion/webrtc/v3 v3.2.8
 	github.com/sacOO7/gowebsocket v0.0.0-20221109081133-70ac927be105
 	google.golang.org/grpc v1.55.0
@@ -15,15 +16,11 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/ebml-go/ebml v0.0.0-20160925193348-ca8851a10894 // indirect
-	github.com/ebml-go/webm v0.0.0-20221117133942-84fa5245cf70 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/petar/GoLLRB v0.0.0-20130427215148-53be0d36a84c // indirect
 	github.com/pion/datachannel v1.5.5 // indirect
 	github.com/pion/dtls/v2 v2.2.7 // indirect
 	github.com/pion/ice/v2 v2.3.6 // indirect
-	github.com/pion/interceptor v0.1.17 // indirect
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/mdns v0.0.7 // indirect
 	github.com/pion/randutil v0.1.0 // indirect

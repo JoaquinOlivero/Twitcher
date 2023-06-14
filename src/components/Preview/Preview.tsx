@@ -7,23 +7,13 @@ const Preview = () => {
     const [muted, setMuted] = useState<boolean>(true)
     const [volume, setVolume] = useState<number>(0.1)
 
-    // useEffect(() => {
-    //     if (isLoaded === false) {
-    //         setIsLoaded(true)
-    //     }
-    // }, [isLoaded])
-
-    // const handleOnError = (error: any) => {
-    //     console.log(error)
-    //     setIsLoaded(false)
-    // }
 
     return (
         <div className="w-1/2 h-full mx-auto relative">
             <div className="bg-foreground w-full h-full z-0 rounded-b-xl"></div>
 
             {/* Controls */}
-            < div className="absolute z-10 w-[98%] h-[98%] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white flex items-end">
+            {/* < div className="absolute z-10 w-[98%] h-[98%] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white flex items-end">
                 {isLoaded &&
                     <button onClick={() => setMuted(!muted)} className="z-3">
                         {muted ?
@@ -37,34 +27,7 @@ const Preview = () => {
                         }
                     </button>
                 }
-            </div>
-
-            {/* {
-                isLoaded ?
-                    <ReactPlayer
-                        // url="/api/preview/master.m3u8"
-                        url="/preview"
-                        playing={true}
-                        controls={false}
-                        volume={volume}
-                        muted={muted}
-                        width="100%"
-                        height="100%"
-                        // onError={(error) => handleOnError(error)}
-                        // config={{
-                        //     file: {
-                        //         forceSafariHLS: true,
-                        //         hlsOptions: {
-                        //             "lowLatencyMode": true
-                        //         }
-                        //     }
-                        // }}
-
-                        style={{ position: "absolute", top: "0" }}
-                    />
-                    :
-                    null
-            } */}
+            </div> */}
 
             <div id="remoteVideos" className="absolute top-0 w-full h-full">
 

@@ -1,10 +1,8 @@
 'use client';
 
-import { enablePreview, preparePreview } from "@/actions";
-import { createElement, useRef } from "react";
+import { enablePreview, startStream } from "@/actions";
 
 const Controls = () => {
-    const controlsRef = useRef<HTMLDivElement>(null)
 
     const handleOnSubmit = async () => {
 
@@ -17,23 +15,20 @@ const Controls = () => {
         pc.oniceconnectionstatechange = e => console.log(pc.iceConnectionState)
 
         pc.ontrack = function (event) {
-            var el: any = document.createElement(event.track.kind)
-            // var el: any = createElement("video")
-            el.srcObject = event.streams[0]
-            el.autoplay = true
-            el.controls = true
-
-            // document.getElementById('remoteVideos')!.appendChild(el)
-            const div = controlsRef.current
-            div?.appendChild(el)
+            if (event.track.kind === "video") {
+                var el: any = document.createElement(event.track.kind)
+                el.srcObject = event.streams[0]
+                el.autoplay = true
+                el.controls = true
+                el.volume = 0.1
+                document.getElementById('remoteVideos')!.appendChild(el)
+            }
         }
 
         pc.onicecandidate = async event => {
             if (event.candidate === null) {
                 const sdp = btoa(JSON.stringify(pc.localDescription))
-                await preparePreview()
                 const serverSdp = await enablePreview(sdp)
-                // console.log(serverSdp)
 
                 try {
                     pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(atob(serverSdp))))
@@ -52,15 +47,15 @@ const Controls = () => {
 
         pc.createOffer().then(d => pc.setLocalDescription(d)).catch(err => console.log(err))
 
-        // preparePreview()
-        // const serverSdp = await enablePreview(sdp)
-        // console.log(serverSdp)
     }
 
     return (
-        <div className='w-1/4 flex flex-col items-end' ref={controlsRef}>
+        <div className='w-1/4 flex flex-col items-end'>
             <div className='w-[95%] h-full bg-foreground rounded-b-xl'>
-                <button className='text-white' onClick={() => handleOnSubmit()}>Enable preview</button>
+                <button className='text-white' onClick={() => handleOnSubmit()}>Start preview</button>
+                <form className="text-white" action={startStream}>
+                    <button>Start stream</button>
+                </form>
             </div>
         </div>
     )

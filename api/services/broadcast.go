@@ -19,7 +19,7 @@ const (
 	h264FrameDuration = time.Millisecond * 25
 )
 
-func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string) {
+func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, playlistUpdate chan string) {
 
 	// Everything below is the Pion WebRTC API, thanks for using it ❤️.
 	offer := webrtc.SessionDescription{}
@@ -216,10 +216,34 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string) {
 		}
 	}()
 
+	// Register data channel creation handling
+	peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
+		// Register channel opening handling
+		d.OnOpen(func() {
+			// Send message when new song starts playing.
+		playlist:
+			for {
+				select {
+				case <-playlistUpdate:
+					err := d.SendText("pop")
+					if err != nil {
+						log.Println(err)
+						d.Close()
+						break playlist
+					}
+				}
+			}
+		})
+
+		d.OnClose(func() {
+			peerConnection.Close()
+		})
+	})
+
 	// Set the handler for ICE connection state
 	// This will notify you when the peer has connected/disconnected
 	peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-		log.Printf("Connection State has changed %s \n", connectionState.String())
+		// log.Printf("Connection State has changed %s \n", connectionState.String())
 		if connectionState == webrtc.ICEConnectionStateConnected {
 			iceConnectedCtxCancel()
 		}
@@ -232,13 +256,13 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string) {
 	// Set the handler for Peer connection state
 	// This will notify you when the peer has connected/disconnected
 	peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
-		log.Printf("Peer Connection State has changed: %s\n", s.String())
+		// log.Printf("Peer Connection State has changed: %s\n", s.String())
 
 		if s == webrtc.PeerConnectionStateFailed {
 			// Wait until PeerConnection has had no network activity for 30 seconds or another failure. It may be reconnected using an ICE Restart.
 			// Use webrtc.PeerConnectionStateDisconnected if you are interested in detecting faster timeout.
 			// Note that the PeerConnection may come back from PeerConnectionStateDisconnected.
-			log.Println("Peer Connection has gone to failed exiting")
+			// log.Println("Peer Connection has gone to failed exiting")
 			return
 		}
 		if s.String() == "disconnected" {
@@ -319,6 +343,30 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string) {
 			}
 		}()
 
+		// Register data channel creation handling
+		peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
+			// Register channel opening handling
+			d.OnOpen(func() {
+				// Send message when new song starts playing.
+			playlist:
+				for {
+					select {
+					case <-playlistUpdate:
+						err := d.SendText("pop")
+						if err != nil {
+							log.Println(err)
+							d.Close()
+							break playlist
+						}
+					}
+				}
+			})
+
+			d.OnClose(func() {
+				peerConnection.Close()
+			})
+		})
+
 		// Set the handler for ICE connection state
 		// This will notify you when the peer has connected/disconnected
 		peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
@@ -341,7 +389,7 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string) {
 				// Wait until PeerConnection has had no network activity for 30 seconds or another failure. It may be reconnected using an ICE Restart.
 				// Use webrtc.PeerConnectionStateDisconnected if you are interested in detecting faster timeout.
 				// Note that the PeerConnection may come back from PeerConnectionStateDisconnected.
-				log.Println("Peer Connection has gone to failed exiting")
+				// log.Println("Peer Connection has gone to failed exiting")
 				return
 			}
 			if s.String() == "disconnected" {

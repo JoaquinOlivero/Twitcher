@@ -15,8 +15,8 @@ service StreamManagement {
     rpc Audio (Empty) returns (stream AudioStream) {};
     rpc Output (Empty) returns (stream OutputResponse) {};
     
-    rpc AudioData (Empty) returns (stream AudioStream) {};
-    rpc OutputData (Empty) returns (stream OutputResponse) {};
+    // rpc AudioData (Empty) returns (stream AudioStream) {};
+    // rpc OutputData (Empty) returns (stream OutputResponse) {};
 }
 
 message Song {

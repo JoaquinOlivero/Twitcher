@@ -26,8 +26,6 @@ const (
 	StreamManagement_StartTwitch_FullMethodName         = "/service.StreamManagement/StartTwitch"
 	StreamManagement_Audio_FullMethodName               = "/service.StreamManagement/Audio"
 	StreamManagement_Output_FullMethodName              = "/service.StreamManagement/Output"
-	StreamManagement_AudioData_FullMethodName           = "/service.StreamManagement/AudioData"
-	StreamManagement_OutputData_FullMethodName          = "/service.StreamManagement/OutputData"
 )
 
 // StreamManagementClient is the client API for StreamManagement service.
@@ -41,8 +39,6 @@ type StreamManagementClient interface {
 	StartTwitch(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 	Audio(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_AudioClient, error)
 	Output(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_OutputClient, error)
-	AudioData(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_AudioDataClient, error)
-	OutputData(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_OutputDataClient, error)
 }
 
 type streamManagementClient struct {
@@ -185,70 +181,6 @@ func (x *streamManagementOutputClient) Recv() (*OutputResponse, error) {
 	return m, nil
 }
 
-func (c *streamManagementClient) AudioData(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_AudioDataClient, error) {
-	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[3], StreamManagement_AudioData_FullMethodName, opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &streamManagementAudioDataClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type StreamManagement_AudioDataClient interface {
-	Recv() (*AudioStream, error)
-	grpc.ClientStream
-}
-
-type streamManagementAudioDataClient struct {
-	grpc.ClientStream
-}
-
-func (x *streamManagementAudioDataClient) Recv() (*AudioStream, error) {
-	m := new(AudioStream)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *streamManagementClient) OutputData(ctx context.Context, in *Empty, opts ...grpc.CallOption) (StreamManagement_OutputDataClient, error) {
-	stream, err := c.cc.NewStream(ctx, &StreamManagement_ServiceDesc.Streams[4], StreamManagement_OutputData_FullMethodName, opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &streamManagementOutputDataClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type StreamManagement_OutputDataClient interface {
-	Recv() (*OutputResponse, error)
-	grpc.ClientStream
-}
-
-type streamManagementOutputDataClient struct {
-	grpc.ClientStream
-}
-
-func (x *streamManagementOutputDataClient) Recv() (*OutputResponse, error) {
-	m := new(OutputResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 // StreamManagementServer is the server API for StreamManagement service.
 // All implementations must embed UnimplementedStreamManagementServer
 // for forward compatibility
@@ -260,8 +192,6 @@ type StreamManagementServer interface {
 	StartTwitch(context.Context, *Empty) (*Empty, error)
 	Audio(*Empty, StreamManagement_AudioServer) error
 	Output(*Empty, StreamManagement_OutputServer) error
-	AudioData(*Empty, StreamManagement_AudioDataServer) error
-	OutputData(*Empty, StreamManagement_OutputDataServer) error
 	mustEmbedUnimplementedStreamManagementServer()
 }
 
@@ -289,12 +219,6 @@ func (UnimplementedStreamManagementServer) Audio(*Empty, StreamManagement_AudioS
 }
 func (UnimplementedStreamManagementServer) Output(*Empty, StreamManagement_OutputServer) error {
 	return status.Errorf(codes.Unimplemented, "method Output not implemented")
-}
-func (UnimplementedStreamManagementServer) AudioData(*Empty, StreamManagement_AudioDataServer) error {
-	return status.Errorf(codes.Unimplemented, "method AudioData not implemented")
-}
-func (UnimplementedStreamManagementServer) OutputData(*Empty, StreamManagement_OutputDataServer) error {
-	return status.Errorf(codes.Unimplemented, "method OutputData not implemented")
 }
 func (UnimplementedStreamManagementServer) mustEmbedUnimplementedStreamManagementServer() {}
 
@@ -444,48 +368,6 @@ func (x *streamManagementOutputServer) Send(m *OutputResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _StreamManagement_AudioData_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Empty)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(StreamManagementServer).AudioData(m, &streamManagementAudioDataServer{stream})
-}
-
-type StreamManagement_AudioDataServer interface {
-	Send(*AudioStream) error
-	grpc.ServerStream
-}
-
-type streamManagementAudioDataServer struct {
-	grpc.ServerStream
-}
-
-func (x *streamManagementAudioDataServer) Send(m *AudioStream) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func _StreamManagement_OutputData_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Empty)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(StreamManagementServer).OutputData(m, &streamManagementOutputDataServer{stream})
-}
-
-type StreamManagement_OutputDataServer interface {
-	Send(*OutputResponse) error
-	grpc.ServerStream
-}
-
-type streamManagementOutputDataServer struct {
-	grpc.ServerStream
-}
-
-func (x *streamManagementOutputDataServer) Send(m *OutputResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
 // StreamManagement_ServiceDesc is the grpc.ServiceDesc for StreamManagement service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -524,16 +406,6 @@ var StreamManagement_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Output",
 			Handler:       _StreamManagement_Output_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "AudioData",
-			Handler:       _StreamManagement_AudioData_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "OutputData",
-			Handler:       _StreamManagement_OutputData_Handler,
 			ServerStreams: true,
 		},
 	},

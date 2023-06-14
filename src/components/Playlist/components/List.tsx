@@ -1,10 +1,10 @@
 'use client';
 
-import { updateSongPlaylist } from "@/actions";
+import { enablePreview, getCurrentPlaylist, updateSongPlaylist } from "@/actions";
 import { Song__Output } from "@/pb/service/Song";
 import { SongPlaylist__Output } from "@/pb/service/SongPlaylist";
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Props = {
     serverPlaylist: SongPlaylist__Output | undefined
@@ -62,6 +62,52 @@ const List = ({ serverPlaylist }: Props) => {
         e.currentTarget.classList.remove("border-lime-500")
         e.currentTarget.classList.remove("bg-background")
     }
+
+    useEffect(() => {
+
+        let pc = new RTCPeerConnection({
+            iceServers: [
+                {
+                    urls: 'stun:stun.l.google.com:19302'
+                }
+            ]
+        })
+
+        pc.oniceconnectionstatechange = e => console.log(pc.iceConnectionState)
+
+        let sendChannel = pc.createDataChannel('updateplaylist')
+
+        sendChannel.onclose = () => console.log('sendChannel has closed')
+        sendChannel.onopen = () => console.log('sendChannel has opened')
+        sendChannel.onmessage = async e => {
+
+            const playlist = await getCurrentPlaylist();
+            setList(playlist)
+        }
+
+        pc.oniceconnectionstatechange = e => console.log(pc.iceConnectionState)
+
+        pc.onicecandidate = async event => {
+            if (event.candidate === null) {
+                const sdp = btoa(JSON.stringify(pc.localDescription))
+                const serverSdp = await enablePreview(sdp)
+
+                try {
+                    pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(atob(serverSdp))))
+                } catch (e) {
+                    console.log(e)
+                }
+            }
+        }
+
+        pc.createOffer().then(d => pc.setLocalDescription(d)).catch(err => console.log(err))
+
+    }, [])
+
+
+    useEffect(() => {
+    }, [list])
+
 
     return (
         <>

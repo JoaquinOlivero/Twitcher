@@ -51,7 +51,6 @@ export const getCurrentPlaylist = async () => {
 }
 
 export const createNewPlaylist = async () => {
-    console.log("creating new playlist")
     const deadline = new Date()
     deadline.setSeconds(deadline.getSeconds() + 5)
 
@@ -105,6 +104,10 @@ export const updateSongPlaylist = async (songs: SongPlaylist__Output) => {
 
 export const enablePreview = async (clientSdp: string) => {
 
+    await startAudio()
+
+    await startOutput()
+
     const serverSdp: string = await new Promise<string>(resolve => {
         var call = client.Preview({sdp: clientSdp});
         call.on("data", async (res: SDP__Output) => {
@@ -133,121 +136,12 @@ export const enablePreview = async (clientSdp: string) => {
 }
 
 
-export const preparePreview = async () => {
-
-    await startAudio()
-
-    await startOutput()
-    
-    var call = client.AudioData({});
-    call.on("data", async (res: AudioStream__Output) => {
-        if (res.playlist) {
-            // console.log(res.playlist.songs![0])
-        }
-
-    })
-
-    call.on("end", () => {
-        // The server has finished sending data.
-    })
-
-    call.on("error", (err) => {
-        // An error has occurred and the stream is closed.
-        console.log(err)
-        // return
-    })
-
-    call.on("status", (status) => {
-        // process status
-        // console.log(status)
-    })
-    
-    var callOut = client.OutputData({});
-    callOut.on("data", async (res: OutputResponse__Output) => {
-        if (res.time) {
-            // console.log("time: ", res.time)
-        }
-
-        if (res.bitrate) {
-            // console.log("bitrate: ", res.bitrate)
-        }
-
-    })
-
-    callOut.on("end", () => {
-        // The server has finished sending data.
-    })
-
-    callOut.on("error", (err) => {
-        // An error has occurred and the stream is closed.
-        console.log(err)
-
-    })
-
-    callOut.on("status", (status) => {
-        // process status
-        // console.log(status)
-    })
-
-}
-
-
 export const startStream = async () => {
 
     await startAudio()
 
     await startOutput()
     
-    var call = client.AudioData({});
-    call.on("data", async (res: AudioStream__Output) => {
-        if (res.playlist) {
-            // console.log(res.playlist.songs![0])
-        }
-
-    })
-
-    call.on("end", () => {
-        // The server has finished sending data.
-    })
-
-    call.on("error", (err) => {
-        // An error has occurred and the stream is closed.
-        console.log(err)
-        // return
-    })
-
-    call.on("status", (status) => {
-        // process status
-        // console.log(status)
-    })
-    
-    var callOut = client.OutputData({});
-    callOut.on("data", async (res: OutputResponse__Output) => {
-        if (res.time) {
-            // console.log("time: ", res.time)
-        }
-
-        if (res.bitrate) {
-            // console.log("bitrate: ", res.bitrate)
-        }
-
-    })
-
-    callOut.on("end", () => {
-        // The server has finished sending data.
-    })
-
-    callOut.on("error", (err) => {
-        // An error has occurred and the stream is closed.
-        console.log(err)
-
-    })
-
-    callOut.on("status", (status) => {
-        // process status
-        // console.log(status)
-    })
-
     const deadline = new Date()
     deadline.setSeconds(deadline.getSeconds() + 5)
 
@@ -266,15 +160,10 @@ export const startStream = async () => {
         })
     })
 
-//    const preview: string = await new Promise(resolve => {
-//     var call = client.Preview({sdp: sdp})
-//    })
-
-    // return preview
 }
 
 const startAudio = async () => {
-        // Listen to audio grpc stream.
+    // Listen to audio grpc stream.
     const audio: boolean = await new Promise(resolve => {
         var call = client.Audio({});
         call.on("data", async (res: AudioStream__Output) => {

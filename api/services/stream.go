@@ -49,30 +49,15 @@ type StreamManagementServer struct {
 }
 
 var (
-	audioDataRes = make(chan *pb.AudioStream)
-	audioDataReq = make(chan struct{})
-
-	outputDataRes = make(chan *pb.OutputResponse)
-	outputDataReq = make(chan struct{})
+	audioDataRes = make(chan string, 300)
 
 	sdp                 = make(chan string, 300)
 	sdpForClientChannel = make(chan string, 300)
 
+	streamChan = make(chan struct{})
+
 	sr, sw = io.Pipe()
 )
-
-func (s *StreamManagementServer) AudioData(in *pb.Empty, stream pb.StreamManagement_AudioDataServer) error {
-	for {
-		audioDataReq <- struct{}{}
-		v := <-audioDataRes
-		err := stream.Send(v)
-		if err != nil {
-			break
-		}
-	}
-
-	return nil
-}
 
 func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_AudioServer) error {
 	if s.audioOn {
@@ -113,27 +98,22 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 
 		song := s.playlist.Songs[0]
 
-		// Pop the song from the queue and send new playlist to client.
+		// Pop the song from the queue and send message to let the client know using webRTC.
 		go func() {
 			s.mu.Lock()
 			_, s.playlist.Songs = s.playlist.Songs[0], s.playlist.Songs[1:]
 			s.mu.Unlock()
 
-			select {
-			case <-audioDataReq:
-				audioDataRes <- &pb.AudioStream{Playlist: &s.playlist}
-			default:
-			}
+			audioDataRes <- "pop"
 
-			// Generate new playlist when there are ten songs left.
+			// Generate new playlist when there are ten songs left and let the client know using webRTC.
 			if len(s.playlist.Songs) == 10 {
-				playlist, err := s.generateRandomPlaylist() // this functions appends to the *pb.Song slice
+				_, err := s.generateRandomPlaylist() // this functions appends new songs to the playlist method in the StreamManagementServer struct.
 				if err != nil {
 					log.Println(err)
 				}
 
-				// Send extended playlist back to client.
-				audioDataRes <- &pb.AudioStream{Playlist: playlist}
+				audioDataRes <- "extended"
 			}
 		}()
 
@@ -169,6 +149,10 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 			i--
 		}
 
+		time.Sleep(10 * time.Second)
+
+		cmd.Process.Kill()
+
 		cmd.Wait()
 
 		if len(s.playlist.Songs) == 0 {
@@ -178,19 +162,6 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 
 	return nil
 
-}
-
-func (s *StreamManagementServer) OutputData(in *pb.Empty, stream pb.StreamManagement_OutputDataServer) error {
-	for {
-		outputDataReq <- struct{}{}
-		v := <-outputDataRes
-		err := stream.Send(v)
-		if err != nil {
-			break
-		}
-	}
-
-	return nil
 }
 
 func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement_OutputServer) error {
@@ -248,14 +219,22 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 	cmd.Start()
 	stream.Send(&pb.OutputResponse{Ready: true})
 
-	go Broadcast(sdp, sdpForClientChannel)
+	go Broadcast(sdp, sdpForClientChannel, audioDataRes)
 
 	go func() {
+		r := bufio.NewReader(stdout)
+		buffer := make([]byte, 2*1024*1024)
 
-		if !s.streamOn {
-			r := bufio.NewReader(stdout)
-			buffer := make([]byte, 2*1024*1024)
-			for {
+		for {
+			select {
+			case <-streamChan:
+				r.Reset(r)
+				_, err := io.Copy(sw, stdout)
+				if err != nil {
+					panic(err)
+				}
+
+			default:
 				r.Discard(r.Size())
 				n, err := io.ReadFull(r, buffer[:cap(buffer)-cap(buffer)/2])
 				buffer = buffer[:n]
@@ -273,17 +252,7 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 						break
 					}
 				}
-				if s.streamOn {
-					break
-				} else {
-					continue
-				}
 			}
-		}
-
-		_, err := io.Copy(sw, stdout)
-		if err != nil {
-			panic(err)
 		}
 
 	}()
@@ -351,7 +320,7 @@ func (s *StreamManagementServer) StartTwitch(ctx context.Context, in *pb.Empty) 
 		"-c:v", "libx264",
 		"-acodec", "libmp3lame", "-q:a", "0",
 		"-flvflags", "no_duration_filesize",
-		"rtmp://bue01.contribute.live-video.net/app/live_198642898_h7vzj8LGGrSS3UVIkMomDHKdWEf2VA",
+		"rtmp://bue01.contribute.live-video.net/app/live_198642898_QgYIiTqK8yCQu2sXd1jIOv79oOJBhf",
 	)
 
 	cmd.Stdin = sr
@@ -359,7 +328,11 @@ func (s *StreamManagementServer) StartTwitch(ctx context.Context, in *pb.Empty) 
 		Pdeathsig: syscall.SIGKILL,
 	}
 
-	cmd.Run()
+	cmd.Start()
+
+	streamChan <- struct{}{}
+
+	cmd.Wait()
 
 	return &pb.Empty{}, nil
 }
