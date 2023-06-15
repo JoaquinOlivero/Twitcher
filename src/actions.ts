@@ -103,7 +103,6 @@ export const updateSongPlaylist = async (songs: SongPlaylist__Output) => {
 }
 
 export const enablePreview = async (clientSdp: string) => {
-
     await startAudio()
 
     await startOutput()
@@ -200,18 +199,9 @@ const startOutput = async () => {
     const output: boolean = await new Promise(resolve => {
         var call = client.Output({});
         call.on("data", async (res: OutputResponse__Output) => {
-            if (res.time) {
-                // console.log("time: ", res.time)
-            }
-
-            if (res.bitrate) {
-                // console.log("bitrate: ", res.bitrate)
-            }
-
             if (res.ready) {
                 resolve(res.ready)
             }
-
         })
     
         call.on("end", () => {
@@ -233,4 +223,54 @@ const startOutput = async () => {
 
     return output
 
+}
+
+export const checkOutputStatus = async () => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    const status: OutputResponse__Output | undefined = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                console.log(err)
+                resolve(undefined)
+            }
+
+            client.outputStatus({}, (err, res) => {
+                if (err) {
+                    console.log(err)
+                    resolve(undefined)
+                }
+                
+                if (res !== undefined) {
+                    resolve(res)
+                } else {
+                    resolve(undefined)
+                }
+            })
+
+        })
+    })
+
+    return status
+}
+
+export const stopOutput = async () => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    client.waitForReady(deadline, (err) => {
+        if (err) {
+            console.log(err)
+            return
+        }
+
+        client.StopOutput({}, (err, res) => {
+            if (err) {
+                console.log(err)
+                return
+            }
+            console.log(res)
+        })
+    })
 }

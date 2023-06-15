@@ -1,12 +1,14 @@
 import Preview from '@/components/Preview/Preview'
 import Playlist from '@/components/Playlist/Playlist'
 import Controls from '@/components/Controls/Controls'
-import { getCurrentPlaylist } from '@/actions';
+import { checkOutputStatus, getCurrentPlaylist } from '@/actions';
+import Top from '@/components/Top/Top';
 
 export const revalidate = 0;
 
 const Home = async () => {
     const playlist = await getCurrentPlaylist();
+    const outputStatus = await checkOutputStatus();
 
     return (
         <div className='w-[99%] h-screen mx-auto flex flex-col'>
@@ -15,8 +17,9 @@ const Home = async () => {
                 <div className='w-1/4'>
 
                 </div>
-                <Preview />
-                <Controls />
+                {/* <Preview outputStatus={outputStatus} />
+                <Controls outputStatus={outputStatus} /> */}
+                <Top outputStatus={outputStatus} />
             </div>
 
             <div className='w-full h-2/5 flex items-center'>

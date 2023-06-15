@@ -13,17 +13,9 @@ const Playlist = ({ serverPlaylist }: Props) => {
     return (
         <div className="bg-foreground shadow-lg w-1/2 h-[95%] rounded-t-xl font-sans overflow-hidden">
             <div className="text-[#fff] w-full my-1 relative">
-
                 <div className="text-center opacity-80 text-xl font-semibold uppercase tracking-wider">
                     Playlist
                 </div>
-
-                {serverPlaylist && !serverPlaylist.songs &&
-                    <form action={createNewPlaylist}>
-                        <button className="absolute right-5 top-1/2 transform -translate-y-1/2" >Create new playlist</button>
-                    </form>
-                }
-
             </div>
 
 

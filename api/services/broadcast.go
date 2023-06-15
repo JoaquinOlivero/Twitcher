@@ -19,7 +19,7 @@ const (
 	h264FrameDuration = time.Millisecond * 25
 )
 
-func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, playlistUpdate chan string) {
+func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, playlistUpdate <-chan struct{}) {
 
 	// Everything below is the Pion WebRTC API, thanks for using it ❤️.
 	offer := webrtc.SessionDescription{}
@@ -77,12 +77,14 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	if err != nil {
 		panic(err)
 	}
+	defer audioPipe.Close()
 
 	// Open named audio pipe
 	videoPipe, err := os.OpenFile("files/stream/previewVideo", os.O_RDWR, os.ModeNamedPipe)
 	if err != nil {
 		panic(err)
 	}
+	defer videoPipe.Close()
 
 	// Create a video track
 	localVideoTrack, videoTrackErr := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264}, "video", "pion")
@@ -221,16 +223,12 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 		// Register channel opening handling
 		d.OnOpen(func() {
 			// Send message when new song starts playing.
-		playlist:
-			for {
-				select {
-				case <-playlistUpdate:
-					err := d.SendText("pop")
-					if err != nil {
-						log.Println(err)
-						d.Close()
-						break playlist
-					}
+			for v := range playlistUpdate {
+				err := d.SendText("")
+				if err != nil {
+					log.Println(v, err)
+					d.Close()
+					break
 				}
 			}
 		})
@@ -348,18 +346,15 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 			// Register channel opening handling
 			d.OnOpen(func() {
 				// Send message when new song starts playing.
-			playlist:
-				for {
-					select {
-					case <-playlistUpdate:
-						err := d.SendText("pop")
-						if err != nil {
-							log.Println(err)
-							d.Close()
-							break playlist
-						}
+				for v := range playlistUpdate {
+					err := d.SendText("")
+					if err != nil {
+						log.Println(v, err)
+						d.Close()
+						break
 					}
 				}
+
 			})
 
 			d.OnClose(func() {
@@ -426,4 +421,5 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 		// Get the LocalDescription and send it to client trying to connect
 		sdpForClientChannel <- Encode(*peerConnection.LocalDescription())
 	}
+
 }

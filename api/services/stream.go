@@ -49,10 +49,13 @@ type StreamManagementServer struct {
 }
 
 var (
-	audioDataRes = make(chan string, 300)
+	audioDataRes = make(chan struct{}, 300)
 
 	sdp                 = make(chan string, 300)
 	sdpForClientChannel = make(chan string, 300)
+
+	stopOutputChan = make(chan struct{})
+	stopAudioChan  = make(chan struct{})
 
 	streamChan = make(chan struct{})
 
@@ -93,6 +96,8 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 		panic(err)
 	}
 
+	exitChan := make(chan struct{})
+
 	i := 1
 	for {
 
@@ -104,7 +109,7 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 			_, s.playlist.Songs = s.playlist.Songs[0], s.playlist.Songs[1:]
 			s.mu.Unlock()
 
-			audioDataRes <- "pop"
+			audioDataRes <- struct{}{}
 
 			// Generate new playlist when there are ten songs left and let the client know using webRTC.
 			if len(s.playlist.Songs) == 10 {
@@ -113,7 +118,7 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 					log.Println(err)
 				}
 
-				audioDataRes <- "extended"
+				audioDataRes <- struct{}{}
 			}
 		}()
 
@@ -149,19 +154,35 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 			i--
 		}
 
-		time.Sleep(10 * time.Second)
+		go func(exit chan struct{}) {
+		routine:
+			for {
+				select {
+				case <-exit:
+					break routine
+				case <-stopAudioChan:
+					log.Println("Killing audio process and breaking out of audio loop")
 
-		cmd.Process.Kill()
+					s.mu.Lock()
+					s.audioOn = false
+					s.mu.Unlock()
+
+					cmd.Process.Signal(syscall.SIGKILL)
+				}
+			}
+
+		}(exitChan)
 
 		cmd.Wait()
 
-		if len(s.playlist.Songs) == 0 {
+		exitChan <- struct{}{}
+
+		if len(s.playlist.Songs) == 0 || !s.audioOn {
 			break
 		}
 	}
 
 	return nil
-
 }
 
 func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement_OutputServer) error {
@@ -182,6 +203,8 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 	s.mu.Lock()
 	s.outputOn = true
 	s.mu.Unlock()
+
+	exitChan := make(chan struct{})
 
 	err := manageNamedPipes()
 	if err != nil {
@@ -221,10 +244,11 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 
 	go Broadcast(sdp, sdpForClientChannel, audioDataRes)
 
-	go func() {
+	go func(exit chan struct{}) {
 		r := bufio.NewReader(stdout)
 		buffer := make([]byte, 2*1024*1024)
 
+	copy:
 		for {
 			select {
 			case <-streamChan:
@@ -233,7 +257,9 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 				if err != nil {
 					panic(err)
 				}
-
+			case <-exit:
+				r.Reset(r)
+				break copy
 			default:
 				r.Discard(r.Size())
 				n, err := io.ReadFull(r, buffer[:cap(buffer)-cap(buffer)/2])
@@ -255,11 +281,37 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 			}
 		}
 
-	}()
+	}(exitChan)
+
+	for v := range stopOutputChan {
+		log.Println("Killing output process ", v)
+
+		s.mu.Lock()
+		s.outputOn = false
+		s.streamOn = false
+		s.mu.Unlock()
+
+		exitChan <- struct{}{}
+
+		cmd.Process.Signal(syscall.SIGKILL)
+
+		break
+	}
 
 	cmd.Wait()
 
 	return nil
+}
+
+func (s *StreamManagementServer) OutputStatus(ctx context.Context, in *pb.Empty) (*pb.OutputResponse, error) {
+	return &pb.OutputResponse{Ready: s.outputOn}, nil
+}
+
+func (s *StreamManagementServer) StopOutput(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
+	stopOutputChan <- struct{}{}
+	stopAudioChan <- struct{}{}
+
+	return &pb.Empty{}, nil
 }
 
 func (s *StreamManagementServer) Preview(in *pb.SDP, stream pb.StreamManagement_PreviewServer) error {

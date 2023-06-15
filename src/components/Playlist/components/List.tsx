@@ -79,8 +79,8 @@ const List = ({ serverPlaylist }: Props) => {
 
         sendChannel.onclose = () => console.log('sendChannel has closed')
         sendChannel.onopen = () => console.log('sendChannel has opened')
-        sendChannel.onmessage = async e => {
 
+        sendChannel.onmessage = async e => {
             const playlist = await getCurrentPlaylist();
             setList(playlist)
         }
