@@ -1,7 +1,8 @@
 'use client';
 import { enablePreview } from "@/actions";
+import { usePC } from "@/context/pcContext";
 import { OutputResponse__Output } from "@/pb/service/OutputResponse";
-import { ForwardRefRenderFunction, forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect } from "react";
 
 type Props = {
     outputStatus: OutputResponse__Output | undefined
@@ -17,17 +18,14 @@ export type Ref = HTMLVideoElement;
 
 
 const Preview = forwardRef<Ref, Props>((props, vRef) => {
+    const { newPc } = usePC();
     const { outputStatus, addVideoElement, muted, handleSoundMuting, isLoaded, volume, handleVolume } = props
 
 
-    useEffect(() => {
-        if (outputStatus && outputStatus.ready) {
+    const showPreview = async () => {
+        const pc: RTCPeerConnection | null = await newPc()
 
-            let pc = new RTCPeerConnection({
-                iceServers: [{
-                    urls: 'stun:stun.l.google.com:19302'
-                }]
-            })
+        if (pc) {
 
             pc.oniceconnectionstatechange = e => console.log(pc.iceConnectionState)
 
@@ -57,7 +55,13 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
             })
 
             pc.createOffer().then(d => pc.setLocalDescription(d)).catch(err => console.log(err))
+        }
 
+    }
+
+    useEffect(() => {
+        if (outputStatus && outputStatus.ready) {
+            showPreview()
         }
     }, [])
 
@@ -95,5 +99,8 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
         </div >
     )
 })
+
+// set display name
+Preview.displayName = 'Preview';
 
 export default Preview

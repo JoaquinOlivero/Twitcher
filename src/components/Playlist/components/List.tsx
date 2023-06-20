@@ -1,6 +1,7 @@
 'use client';
 
-import { enablePreview, getCurrentPlaylist, updateSongPlaylist } from "@/actions";
+import { getCurrentPlaylist, updateSongPlaylist } from "@/actions";
+import { usePC } from "@/context/pcContext";
 import { Song__Output } from "@/pb/service/Song";
 import { SongPlaylist__Output } from "@/pb/service/SongPlaylist";
 import Image from "next/image";
@@ -11,6 +12,7 @@ type Props = {
 }
 
 const List = ({ serverPlaylist }: Props) => {
+    const { pc, updatePlaylistDataChan } = usePC();
     const playlistRef = useRef<HTMLDivElement>(null);
     const dragItem = useRef<number | null>(null);
     const dragOverItem = useRef<number | null>(null);
@@ -64,49 +66,19 @@ const List = ({ serverPlaylist }: Props) => {
     }
 
     useEffect(() => {
-
-        let pc = new RTCPeerConnection({
-            iceServers: [
-                {
-                    urls: 'stun:stun.l.google.com:19302'
-                }
-            ]
-        })
-
-        pc.oniceconnectionstatechange = e => console.log(pc.iceConnectionState)
-
-        let sendChannel = pc.createDataChannel('updateplaylist')
-
-        sendChannel.onclose = () => console.log('sendChannel has closed')
-        sendChannel.onopen = () => console.log('sendChannel has opened')
-
-        sendChannel.onmessage = async e => {
-            const playlist = await getCurrentPlaylist();
-            setList(playlist)
-        }
-
-        pc.oniceconnectionstatechange = e => console.log(pc.iceConnectionState)
-
-        pc.onicecandidate = async event => {
-            if (event.candidate === null) {
-                const sdp = btoa(JSON.stringify(pc.localDescription))
-                const serverSdp = await enablePreview(sdp)
-
-                try {
-                    pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(atob(serverSdp))))
-                } catch (e) {
-                    console.log(e)
-                }
-            }
-        }
-
-        pc.createOffer().then(d => pc.setLocalDescription(d)).catch(err => console.log(err))
-
-    }, [])
-
+    }, [list])
 
     useEffect(() => {
-    }, [list])
+        if (pc && updatePlaylistDataChan) {
+            updatePlaylistDataChan.onclose = () => console.log('updatePlaylistChan has closed')
+            updatePlaylistDataChan.onopen = () => console.log('updatePlaylistChan has opened')
+
+            updatePlaylistDataChan.onmessage = async e => {
+                const playlist = await getCurrentPlaylist();
+                setList(playlist)
+            }
+        }
+    }, [pc])
 
 
     return (

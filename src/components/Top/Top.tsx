@@ -76,6 +76,9 @@ const Top = ({ outputStatus }: Props) => {
 
     return (
         <>
+            <div className='w-1/4'>
+
+            </div>
             <Preview
                 outputStatus={outputStatus}
                 addVideoElement={addVideoElement}

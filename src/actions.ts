@@ -1,14 +1,12 @@
 "use server";
 
-import path, { resolve } from 'path'
+import path from 'path'
 import * as grpc from "@grpc/grpc-js"
 import * as protoLoader from "@grpc/proto-loader"
 import { ProtoGrpcType } from "@/pb/songs"
 import { SongPlaylist__Output } from './pb/service/SongPlaylist';
-import { AudioStream__Output } from './pb/service/AudioStream';
 import { OutputResponse__Output } from './pb/service/OutputResponse';
 import { revalidatePath } from 'next/cache';
-import { SDP__Output } from './pb/service/SDP';
 
 const PROTO_FILE = "../../../../proto/songs.proto"
 
@@ -27,7 +25,7 @@ export const getCurrentPlaylist = async () => {
     const playlist: SongPlaylist__Output | undefined = await new Promise(resolve => {
         client.waitForReady(deadline, (err) => {
             if (err) {
-                console.log(err)
+                // console.log(err)
                 resolve(undefined)
             }
 
@@ -38,6 +36,7 @@ export const getCurrentPlaylist = async () => {
 
                 if (res !== undefined) {
                     resolve(res)
+                    revalidatePath("/")
                 } else {
                     resolve(undefined)
                 }
@@ -57,13 +56,13 @@ export const createNewPlaylist = async () => {
     const playlist: SongPlaylist__Output | undefined = await new Promise(resolve => {
         client.waitForReady(deadline, (err) => {
             if (err) {
-                console.log(err)
+                // console.log(err)
                 resolve(undefined)
             }
 
             client.CreateSongPlaylist({}, (err, res) => {
                 if (err) {
-                    console.log(err)
+                    // console.log(err)
                     resolve(undefined)
                 }
                 
@@ -88,13 +87,13 @@ export const updateSongPlaylist = async (songs: SongPlaylist__Output) => {
 
     client.waitForReady(deadline, (err) => {
         if (err) {
-            console.log(err)
+            // console.log(err)
             return
         }
 
         client.UpdateSongPlaylist(songs, (err, res) => {
             if (err) {
-                console.log(err)
+                // console.log(err)
                 return
             }
         })
@@ -107,29 +106,33 @@ export const enablePreview = async (clientSdp: string) => {
 
     await startOutput()
 
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+    
     const serverSdp: string = await new Promise<string>(resolve => {
-        var call = client.Preview({sdp: clientSdp});
-        call.on("data", async (res: SDP__Output) => {
-            if (res.sdp) {
-                resolve(res.sdp)
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                // console.log(err)
+                resolve(err.message)
+                return err.message
             }
+            
+            client.Preview({sdp: clientSdp}, (err, res) => {
+                if (err) {
+                    // console.log(err)
+                    resolve(err.message)
+                    return err.message
+                }
+                
+                if (res && res.sdp) {
+                    resolve(res.sdp)
+                    return res.sdp
+                }
+            })
         })
-    
-        call.on("end", () => {
-            // The server has finished sending data.
-        })
-    
-        call.on("error", (err) => {
-            // An error has occurred and the stream is closed.
-            console.log(err)
-            return
-        })
-    
-        call.on("status", (status) => {
-            // process status
-            // console.log(status)
-        })
+        
     })
+
 
     return serverSdp
 }
@@ -140,89 +143,86 @@ export const startStream = async () => {
     await startAudio()
 
     await startOutput()
-    
+
     const deadline = new Date()
     deadline.setSeconds(deadline.getSeconds() + 5)
 
     client.waitForReady(deadline, (err) => {
         if (err) {
-            console.log(err)
+            // console.log(err)
             return
         }
 
         client.StartTwitch({}, (err, res) => {
             if (err) {
-                console.log(err)
+                // console.log(err)
                 return
             }
-            console.log(res)
         })
     })
 
 }
 
 const startAudio = async () => {
-    // Listen to audio grpc stream.
-    const audio: boolean = await new Promise(resolve => {
-        var call = client.Audio({});
-        call.on("data", async (res: AudioStream__Output) => {
-            if (res.playlist) {
-                // console.log(res)
-            }
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
 
-            if (res.ready) {
-                resolve(res.ready)
+    const ready: boolean = await new Promise<boolean>(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                // console.log(err)
+                resolve(false)
+                return false
             }
+            
+            client.StartAudio({}, (err, res) => {
+                if (err) {
+                    // console.log(err)
+                    resolve(false)
+                    return false
+                }
+                
+                if (res && res.ready) {
+                    resolve(res.ready)
+                    return res.ready
+                }
+            })
         })
-    
-        call.on("end", () => {
-            // The server has finished sending data.
-        })
-    
-        call.on("error", (err) => {
-            // An error has occurred and the stream is closed.
-            console.log(err)
-            resolve(false)
-        })
-    
-        call.on("status", (status) => {
-            // process status
-            // console.log(status)
-        })
-    
+        
     })
 
-    return audio
+    return ready
 }
-
+    
 const startOutput = async () => {
-    const output: boolean = await new Promise(resolve => {
-        var call = client.Output({});
-        call.on("data", async (res: OutputResponse__Output) => {
-            if (res.ready) {
-                resolve(res.ready)
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+    
+    const ready: boolean = await new Promise<boolean>(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                // console.log(err)
+                resolve(false)
+                return false
             }
+            
+            client.StartOutput({}, (err, res) => {
+                if (err) {
+                    // console.log(err)
+                    resolve(false)
+                    return
+                }
+                
+                if (res && res.ready) {
+                    resolve(res.ready)
+                    return res.ready
+                }
+            })
         })
-    
-        call.on("end", () => {
-            // The server has finished sending data.
-        })
-    
-        call.on("error", (err) => {
-            // An error has occurred and the stream is closed.
-            console.log(err)
-            resolve(false)
-
-        })
-    
-        call.on("status", (status) => {
-            // process status
-            // console.log(status)
-        })
+        
     })
 
-    return output
-
+    return ready
 }
 
 export const checkOutputStatus = async () => {
@@ -232,13 +232,13 @@ export const checkOutputStatus = async () => {
     const status: OutputResponse__Output | undefined = await new Promise(resolve => {
         client.waitForReady(deadline, (err) => {
             if (err) {
-                console.log(err)
+                // console.log(err)
                 resolve(undefined)
             }
 
             client.outputStatus({}, (err, res) => {
                 if (err) {
-                    console.log(err)
+                    // console.log(err)
                     resolve(undefined)
                 }
                 
@@ -261,16 +261,15 @@ export const stopOutput = async () => {
 
     client.waitForReady(deadline, (err) => {
         if (err) {
-            console.log(err)
+            // console.log(err)
             return
         }
 
         client.StopOutput({}, (err, res) => {
             if (err) {
-                console.log(err)
+                // console.log(err)
                 return
             }
-            console.log(res)
         })
     })
 }

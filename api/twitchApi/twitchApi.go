@@ -166,7 +166,6 @@ func Alerts(wgAlerts *sync.WaitGroup) error {
 					Pdeathsig: syscall.SIGKILL,
 				}
 
-				// cmd.Run()
 				cmd.Start()
 			placeholder:
 				for {
@@ -176,7 +175,6 @@ func Alerts(wgAlerts *sync.WaitGroup) error {
 						break placeholder
 					}
 				}
-				// cmd.Wait()
 			}
 		}
 	}()
@@ -217,7 +215,6 @@ func Alerts(wgAlerts *sync.WaitGroup) error {
 				}
 
 				if wgAlertsI == 1 {
-					fmt.Println("session_welcome")
 					wgAlerts.Done()
 					wgAlertsI--
 				}

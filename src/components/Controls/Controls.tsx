@@ -1,8 +1,9 @@
 'use client';
 
-import { createNewPlaylist, enablePreview, startStream, stopOutput } from "@/actions";
+import { createNewPlaylist, enablePreview, getCurrentPlaylist, stopOutput } from "@/actions";
+import { usePC } from "@/context/pcContext";
 import { OutputResponse__Output } from "@/pb/service/OutputResponse";
-import { forwardRef, useState } from "react";
+import { useState } from "react";
 
 type Props = {
     outputStatus: OutputResponse__Output | undefined
@@ -11,47 +12,50 @@ type Props = {
 }
 
 const Controls = ({ outputStatus, addVideoElement, removeVideoElement }: Props) => {
+    const { newPc } = usePC();
     const [oStatus, setOStatus] = useState<OutputResponse__Output | undefined>(outputStatus)
 
     const handleStartPreview = async () => {
 
-        await createNewPlaylist()
-
-        let pc = new RTCPeerConnection({
-            iceServers: [{
-                urls: 'stun:stun.l.google.com:19302'
-            }]
-        })
-
-        pc.oniceconnectionstatechange = e => console.log(pc.iceConnectionState)
-
-        pc.ontrack = function (event) {
-            addVideoElement(event)
-            setOStatus({ ready: true })
+        const currentPlaylist = await getCurrentPlaylist()
+        if (!currentPlaylist?.songs) {
+            await createNewPlaylist()
         }
 
-        pc.onicecandidate = async event => {
-            if (event.candidate === null) {
-                const sdp = btoa(JSON.stringify(pc.localDescription))
-                const serverSdp = await enablePreview(sdp)
+        const pc: RTCPeerConnection | null = await newPc()
 
-                try {
-                    pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(atob(serverSdp))))
-                } catch (e) {
-                    console.log(e)
+        if (pc) {
+
+            pc.oniceconnectionstatechange = e => console.log(pc.iceConnectionState)
+
+            pc.ontrack = function (event) {
+                addVideoElement(event)
+                setOStatus({ ready: true })
+            }
+
+            pc.onicecandidate = async event => {
+                if (event.candidate === null) {
+                    const sdp = btoa(JSON.stringify(pc.localDescription))
+                    const serverSdp = await enablePreview(sdp)
+
+                    try {
+                        pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(atob(serverSdp))))
+                    } catch (e) {
+                        console.log(e)
+                    }
                 }
             }
+
+            // Offer to receive 1 audio, and 1 video track
+            pc.addTransceiver('video', {
+                'direction': 'sendrecv'
+            })
+            pc.addTransceiver('audio', {
+                'direction': 'sendrecv'
+            })
+
+            pc.createOffer().then(d => pc.setLocalDescription(d)).catch(err => console.log(err))
         }
-
-        // Offer to receive 1 audio, and 1 video track
-        pc.addTransceiver('video', {
-            'direction': 'sendrecv'
-        })
-        pc.addTransceiver('audio', {
-            'direction': 'sendrecv'
-        })
-
-        pc.createOffer().then(d => pc.setLocalDescription(d)).catch(err => console.log(err))
 
     }
 

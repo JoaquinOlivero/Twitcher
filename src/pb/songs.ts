@@ -9,7 +9,7 @@ type SubtypeConstructor<Constructor extends new (...args: any) => any, Subtype> 
 
 export interface ProtoGrpcType {
   service: {
-    AudioStream: MessageTypeDefinition
+    AudioResponse: MessageTypeDefinition
     Empty: MessageTypeDefinition
     OutputResponse: MessageTypeDefinition
     SDP: MessageTypeDefinition

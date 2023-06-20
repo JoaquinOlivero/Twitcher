@@ -19,7 +19,8 @@ const (
 	h264FrameDuration = time.Millisecond * 25
 )
 
-func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, playlistUpdate <-chan struct{}) {
+func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, playlistUpdate, exit <-chan struct{}) {
+	defer log.Println("closing broadcast func")
 
 	// Everything below is the Pion WebRTC API, thanks for using it ❤️.
 	offer := webrtc.SessionDescription{}
@@ -60,7 +61,8 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	i.Add(intervalPliFactory)
 
 	// Create a new RTCPeerConnection
-	peerConnection, err := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i)).NewPeerConnection(peerConnectionConfig)
+	// peerConnection, err := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i)).NewPeerConnection(peerConnectionConfig)
+	peerConnection, err := webrtc.NewPeerConnection(peerConnectionConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -68,6 +70,7 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 		if cErr := peerConnection.Close(); cErr != nil {
 			fmt.Printf("cannot close peerConnection: %v\n", cErr)
 		}
+		fmt.Println("peer connection closed")
 	}()
 
 	iceConnectedCtx, iceConnectedCtxCancel := context.WithCancel(context.Background())
@@ -100,17 +103,25 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	// Read incoming RTCP packets
 	// Before these packets are returned they are processed by interceptors. For things
 	// like NACK this needs to be called.
-	go func() {
+	go func(exit <-chan struct{}) {
+		defer fmt.Println("closing video rtcp")
 		rtcpBuf := make([]byte, 1500)
+
+	outer:
 		for {
-			if _, _, rtcpErr := rtpSender.Read(rtcpBuf); rtcpErr != nil {
-				return
+			select {
+			case <-exit:
+				break outer
+			default:
+				if _, _, rtcpErr := rtpSender.Read(rtcpBuf); rtcpErr != nil {
+					return
+				}
 			}
 		}
-	}()
+	}(exit)
 
-	go func() {
-
+	go func(exit <-chan struct{}) {
+		defer fmt.Println("closing video")
 		if err != nil {
 			panic(err)
 		}
@@ -131,30 +142,38 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 		// * works around latency issues with Sleep (see https://github.com/golang/go/issues/44343)
 		spsAndPpsCache := []byte{}
 		ticker := time.NewTicker(h264FrameDuration)
+	outer:
 		for ; true; <-ticker.C {
-			nal, h264Err := h264.NextNAL()
-			if h264Err == io.EOF {
-				log.Printf("All video frames parsed and sent")
-			}
-			if h264Err != nil {
-				panic(h264Err)
-			}
+			select {
+			case <-exit:
+				break outer
+			default:
+				nal, h264Err := h264.NextNAL()
+				if h264Err == io.EOF {
+					log.Printf("All video frames parsed and sent")
+					break outer
+				}
+				if h264Err != nil {
+					log.Println(h264Err)
+					break outer
+				}
 
-			nal.Data = append([]byte{0x00, 0x00, 0x00, 0x01}, nal.Data...)
+				nal.Data = append([]byte{0x00, 0x00, 0x00, 0x01}, nal.Data...)
 
-			if nal.UnitType == h264reader.NalUnitTypeSPS || nal.UnitType == h264reader.NalUnitTypePPS {
-				spsAndPpsCache = append(spsAndPpsCache, nal.Data...)
-				continue
-			} else if nal.UnitType == h264reader.NalUnitTypeCodedSliceIdr {
-				nal.Data = append(spsAndPpsCache, nal.Data...)
-				spsAndPpsCache = []byte{}
-			}
+				if nal.UnitType == h264reader.NalUnitTypeSPS || nal.UnitType == h264reader.NalUnitTypePPS {
+					spsAndPpsCache = append(spsAndPpsCache, nal.Data...)
+					continue
+				} else if nal.UnitType == h264reader.NalUnitTypeCodedSliceIdr {
+					nal.Data = append(spsAndPpsCache, nal.Data...)
+					spsAndPpsCache = []byte{}
+				}
 
-			if h264Err = localVideoTrack.WriteSample(media.Sample{Data: nal.Data, Duration: time.Second}); h264Err != nil {
-				panic(h264Err)
+				if h264Err = localVideoTrack.WriteSample(media.Sample{Data: nal.Data, Duration: time.Second}); h264Err != nil {
+					panic(h264Err)
+				}
 			}
 		}
-	}()
+	}(exit)
 
 	// Create an audio track
 	localAudioTrack, audioTrackErr := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeOpus}, "audio", "pion")
@@ -170,16 +189,25 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	// Read incoming RTCP packets
 	// Before these packets are returned they are processed by interceptors. For things
 	// like NACK this needs to be called.
-	go func() {
+	go func(exit <-chan struct{}) {
+		defer fmt.Println("closing audio rtcp")
 		rtcpBuf := make([]byte, 1500)
+
+	outer:
 		for {
-			if _, _, rtcpErr := rtpSenderAudio.Read(rtcpBuf); rtcpErr != nil {
-				return
+			select {
+			case <-exit:
+				break outer
+			default:
+				if _, _, rtcpErr := rtpSenderAudio.Read(rtcpBuf); rtcpErr != nil {
+					return
+				}
 			}
 		}
-	}()
+	}(exit)
 
-	go func() {
+	go func(exit <-chan struct{}) {
+		defer fmt.Println("closing audio")
 		// Open on oggfile in non-checksum mode.
 		ogg, _, oggErr := NewWith(audioPipe)
 		if oggErr != nil {
@@ -197,38 +225,53 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 		// * works around latency issues with Sleep (see https://github.com/golang/go/issues/44343)
 		oggPageDuration := time.Microsecond * 1000
 		ticker := time.NewTicker(oggPageDuration)
+
+	outer:
 		for ; true; <-ticker.C {
-			pageData, pageHeader, oggErr := ogg.ParseNextPage()
-			if oggErr == io.EOF {
-				fmt.Printf("All audio pages parsed and sent")
-			}
+			select {
+			case <-exit:
+				break outer
+			default:
+				pageData, pageHeader, oggErr := ogg.ParseNextPage()
+				if oggErr == io.EOF {
+					fmt.Printf("All audio pages parsed and sent")
+				}
 
-			if oggErr != nil {
-				panic(oggErr)
-			}
+				if oggErr != nil {
+					// panic(oggErr)
+					break outer
+				}
 
-			// The amount of samples is the difference between the last and current timestamp
-			sampleCount := float64(pageHeader.GranulePosition - lastGranule)
-			lastGranule = pageHeader.GranulePosition
-			sampleDuration := time.Duration((sampleCount/48000)*1000) * time.Millisecond
+				// The amount of samples is the difference between the last and current timestamp
+				sampleCount := float64(pageHeader.GranulePosition - lastGranule)
+				lastGranule = pageHeader.GranulePosition
+				sampleDuration := time.Duration((sampleCount/48000)*1000) * time.Millisecond
 
-			if oggErr = localAudioTrack.WriteSample(media.Sample{Data: pageData, Duration: sampleDuration}); oggErr != nil {
-				panic(oggErr)
+				if oggErr = localAudioTrack.WriteSample(media.Sample{Data: pageData, Duration: sampleDuration}); oggErr != nil {
+					panic(oggErr)
+				}
 			}
 		}
-	}()
+	}(exit)
 
 	// Register data channel creation handling
 	peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
 		// Register channel opening handling
 		d.OnOpen(func() {
-			// Send message when new song starts playing.
-			for v := range playlistUpdate {
-				err := d.SendText("")
-				if err != nil {
-					log.Println(v, err)
+		outer:
+			for {
+				select {
+				case <-exit:
+					fmt.Println("exit data channel for loop")
 					d.Close()
-					break
+					break outer
+				case <-playlistUpdate:
+					// Send message when new song starts playing.
+					err := d.SendText("")
+					if err != nil {
+						d.Close()
+						break outer
+					}
 				}
 			}
 		})
@@ -241,12 +284,13 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	// Set the handler for ICE connection state
 	// This will notify you when the peer has connected/disconnected
 	peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-		// log.Printf("Connection State has changed %s \n", connectionState.String())
+		log.Printf("Connection State has changed %s \n", connectionState.String())
 		if connectionState == webrtc.ICEConnectionStateConnected {
 			iceConnectedCtxCancel()
 		}
 
 		if connectionState.String() == "disconnected" {
+			peerConnection.Close()
 			return
 		}
 	})
@@ -254,7 +298,7 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	// Set the handler for Peer connection state
 	// This will notify you when the peer has connected/disconnected
 	peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
-		// log.Printf("Peer Connection State has changed: %s\n", s.String())
+		log.Printf("Peer Connection State has changed: %s\n", s.String())
 
 		if s == webrtc.PeerConnectionStateFailed {
 			// Wait until PeerConnection has had no network activity for 30 seconds or another failure. It may be reconnected using an ICE Restart.
@@ -264,6 +308,7 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 			return
 		}
 		if s.String() == "disconnected" {
+			peerConnection.Close()
 			return
 		}
 	})
@@ -271,12 +316,14 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	// Set the remote SessionDescription
 	err = peerConnection.SetRemoteDescription(offer)
 	if err != nil {
+		peerConnection.Close()
 		panic(err)
 	}
 
 	// Create answer
 	answer, err := peerConnection.CreateAnswer(nil)
 	if err != nil {
+		peerConnection.Close()
 		panic(err)
 	}
 
@@ -286,6 +333,7 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	// Sets the LocalDescription, and starts our UDP listeners
 	err = peerConnection.SetLocalDescription(answer)
 	if err != nil {
+		peerConnection.Close()
 		panic(err)
 	}
 
@@ -297,129 +345,167 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	// Get the LocalDescription and send it to client trying to connect
 	sdpForClientChannel <- Encode(*peerConnection.LocalDescription())
 
+outer:
 	for {
-		recvOnlyOffer := webrtc.SessionDescription{}
-		Decode(<-sdpFromClient, &recvOnlyOffer)
 
-		// Create a new PeerConnection
-		peerConnection, err := webrtc.NewPeerConnection(peerConnectionConfig)
-		if err != nil {
-			panic(err)
-		}
+		select {
+		case <-exit:
+			break outer
+		case sdp := <-sdpFromClient:
+			recvOnlyOffer := webrtc.SessionDescription{}
+			// Decode(<-sdpFromClient, &recvOnlyOffer)
+			Decode(sdp, &recvOnlyOffer)
 
-		rtpSender, err = peerConnection.AddTrack(localVideoTrack)
-		if err != nil {
-			panic(err)
-		}
-
-		// Read incoming RTCP packets
-		// Before these packets are returned they are processed by interceptors. For things
-		// like NACK this needs to be called.
-		go func() {
-			rtcpBuf := make([]byte, 1500)
-			for {
-				if _, _, rtcpErr := rtpSender.Read(rtcpBuf); rtcpErr != nil {
-					return
-				}
+			// Create a new PeerConnection
+			peerConnection, err := webrtc.NewPeerConnection(peerConnectionConfig)
+			if err != nil {
+				peerConnection.Close()
+				panic(err)
 			}
-		}()
 
-		rtpAudioSender, err := peerConnection.AddTrack(localAudioTrack)
-		if err != nil {
-			panic(err)
-		}
-
-		// Read incoming RTCP packets
-		// Before these packets are returned they are processed by interceptors. For things
-		// like NACK this needs to be called.
-		go func() {
-			rtcpBuf := make([]byte, 1500)
-			for {
-				if _, _, rtcpErr := rtpAudioSender.Read(rtcpBuf); rtcpErr != nil {
-					return
-				}
+			rtpSender, err = peerConnection.AddTrack(localVideoTrack)
+			if err != nil {
+				peerConnection.Close()
+				panic(err)
 			}
-		}()
 
-		// Register data channel creation handling
-		peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
-			// Register channel opening handling
-			d.OnOpen(func() {
-				// Send message when new song starts playing.
-				for v := range playlistUpdate {
-					err := d.SendText("")
-					if err != nil {
-						log.Println(v, err)
-						d.Close()
-						break
+			// Read incoming RTCP packets
+			// Before these packets are returned they are processed by interceptors. For things
+			// like NACK this needs to be called.
+			go func(exit <-chan struct{}) {
+				rtcpBuf := make([]byte, 1500)
+
+			outer:
+				for {
+					select {
+					case <-exit:
+						break outer
+					default:
+						if _, _, rtcpErr := rtpSender.Read(rtcpBuf); rtcpErr != nil {
+							peerConnection.Close()
+							return
+						}
 					}
 				}
+			}(exit)
 
+			rtpAudioSender, err := peerConnection.AddTrack(localAudioTrack)
+			if err != nil {
+				panic(err)
+			}
+
+			// Read incoming RTCP packets
+			// Before these packets are returned they are processed by interceptors. For things
+			// like NACK this needs to be called.
+			go func(exit <-chan struct{}) {
+				rtcpBuf := make([]byte, 1500)
+
+			outer:
+				for {
+					select {
+					case <-exit:
+						break outer
+					default:
+						if _, _, rtcpErr := rtpAudioSender.Read(rtcpBuf); rtcpErr != nil {
+							peerConnection.Close()
+							return
+						}
+					}
+				}
+			}(exit)
+
+			// Register data channel creation handling
+			peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
+				// Register channel opening handling
+				d.OnOpen(func() {
+				outer:
+					for {
+						select {
+						case <-exit:
+							fmt.Println("exit data channel for loop")
+							d.Close()
+							break outer
+						case <-playlistUpdate:
+							// Send message when new song starts playing.
+							err := d.SendText("")
+							if err != nil {
+								d.Close()
+								break outer
+							}
+						}
+					}
+				})
+
+				d.OnClose(func() {
+					peerConnection.Close()
+				})
 			})
 
-			d.OnClose(func() {
+			// Set the handler for ICE connection state
+			// This will notify you when the peer has connected/disconnected
+			peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+				log.Printf("Connection State has changed %s \n", connectionState.String())
+				if connectionState == webrtc.ICEConnectionStateConnected {
+					iceConnectedCtxCancel()
+				}
+
+				if connectionState.String() == "disconnected" {
+					peerConnection.Close()
+					return
+				}
+			})
+
+			// Set the handler for Peer connection state
+			// This will notify you when the peer has connected/disconnected
+			peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
+				log.Printf("Peer Connection State has changed: %s\n", s.String())
+
+				if s == webrtc.PeerConnectionStateFailed {
+					// Wait until PeerConnection has had no network activity for 30 seconds or another failure. It may be reconnected using an ICE Restart.
+					// Use webrtc.PeerConnectionStateDisconnected if you are interested in detecting faster timeout.
+					// Note that the PeerConnection may come back from PeerConnectionStateDisconnected.
+					// log.Println("Peer Connection has gone to failed exiting")
+					peerConnection.Close()
+					return
+				}
+				if s.String() == "disconnected" {
+					peerConnection.Close()
+					return
+				}
+			})
+
+			// Set the remote SessionDescription
+			err = peerConnection.SetRemoteDescription(recvOnlyOffer)
+			if err != nil {
 				peerConnection.Close()
-			})
-		})
-
-		// Set the handler for ICE connection state
-		// This will notify you when the peer has connected/disconnected
-		peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-			log.Printf("Connection State has changed %s \n", connectionState.String())
-			if connectionState == webrtc.ICEConnectionStateConnected {
-				iceConnectedCtxCancel()
+				panic(err)
 			}
 
-			if connectionState.String() == "disconnected" {
-				return
+			// Create answer
+			answer, err := peerConnection.CreateAnswer(nil)
+			if err != nil {
+				peerConnection.Close()
+				panic(err)
 			}
-		})
 
-		// Set the handler for Peer connection state
-		// This will notify you when the peer has connected/disconnected
-		peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
-			log.Printf("Peer Connection State has changed: %s\n", s.String())
+			// Create channel that is blocked until ICE Gathering is complete
+			gatherComplete = webrtc.GatheringCompletePromise(peerConnection)
 
-			if s == webrtc.PeerConnectionStateFailed {
-				// Wait until PeerConnection has had no network activity for 30 seconds or another failure. It may be reconnected using an ICE Restart.
-				// Use webrtc.PeerConnectionStateDisconnected if you are interested in detecting faster timeout.
-				// Note that the PeerConnection may come back from PeerConnectionStateDisconnected.
-				// log.Println("Peer Connection has gone to failed exiting")
-				return
+			// Sets the LocalDescription, and starts our UDP listeners
+			err = peerConnection.SetLocalDescription(answer)
+			if err != nil {
+				peerConnection.Close()
+				panic(err)
 			}
-			if s.String() == "disconnected" {
-				return
-			}
-		})
 
-		// Set the remote SessionDescription
-		err = peerConnection.SetRemoteDescription(recvOnlyOffer)
-		if err != nil {
-			panic(err)
+			// Block until ICE Gathering is complete, disabling trickle ICE
+			// we do this because we only can exchange one signaling message
+			// in a production application you should exchange ICE Candidates via OnICECandidate
+			<-gatherComplete
+
+			// Get the LocalDescription and send it to client trying to connect
+			sdpForClientChannel <- Encode(*peerConnection.LocalDescription())
 		}
-
-		// Create answer
-		answer, err := peerConnection.CreateAnswer(nil)
-		if err != nil {
-			panic(err)
-		}
-
-		// Create channel that is blocked until ICE Gathering is complete
-		gatherComplete = webrtc.GatheringCompletePromise(peerConnection)
-
-		// Sets the LocalDescription, and starts our UDP listeners
-		err = peerConnection.SetLocalDescription(answer)
-		if err != nil {
-			panic(err)
-		}
-
-		// Block until ICE Gathering is complete, disabling trickle ICE
-		// we do this because we only can exchange one signaling message
-		// in a production application you should exchange ICE Candidates via OnICECandidate
-		<-gatherComplete
-
-		// Get the LocalDescription and send it to client trying to connect
-		sdpForClientChannel <- Encode(*peerConnection.LocalDescription())
 	}
 
 }

@@ -55,14 +55,41 @@ var (
 	sdpForClientChannel = make(chan string, 300)
 
 	stopOutputChan = make(chan struct{})
-	stopAudioChan  = make(chan struct{})
+
+	stopAudioChan = make(chan struct{})
 
 	streamChan = make(chan struct{})
 
 	sr, sw = io.Pipe()
 )
 
-func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_AudioServer) error {
+func (s *StreamManagementServer) StartAudio(ctx context.Context, in *pb.Empty) (*pb.AudioResponse, error) {
+	if s.audioOn {
+		return nil, status.Errorf(
+			codes.FailedPrecondition,
+			fmt.Sprintln("audio already started"),
+		)
+	}
+
+	if len(s.playlist.Songs) == 0 {
+		return nil, status.Errorf(
+			codes.FailedPrecondition,
+			fmt.Sprintln("cannot play audio. Playlist is empty"),
+		)
+	}
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+
+	go s.Audio(&wg)
+
+	wg.Wait()
+
+	return &pb.AudioResponse{Ready: true}, nil
+}
+
+func (s *StreamManagementServer) Audio(wg *sync.WaitGroup) error {
 	if s.audioOn {
 		return status.Errorf(
 			codes.FailedPrecondition,
@@ -87,13 +114,13 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 	// Remove the named pipe if it already exists.
 	err := os.Remove(audioPipePath)
 	if err != nil && !os.IsNotExist(err) {
-		panic(err)
+		return err
 	}
 
 	// Create named pipe.
 	err = syscall.Mkfifo(audioPipePath, 0644)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	exitChan := make(chan struct{})
@@ -128,7 +155,7 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 		// Open named audio pipe
 		audioPipe, err := os.OpenFile("files/stream/audio", os.O_RDWR, os.ModeNamedPipe)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		cmd := exec.Command("ffmpeg",
@@ -149,11 +176,11 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 		cmd.Start()
 
 		if i > 0 {
-			// Let client know that the audio is ready to be used in the final output.
-			stream.Send(&pb.AudioStream{Ready: true})
+			wg.Done()
 			i--
 		}
 
+		// kill ffmpeg instance when stopAudioChan is called. Otherwise break the for loop when exit is called and let the goroutine finish.
 		go func(exit chan struct{}) {
 		routine:
 			for {
@@ -175,6 +202,7 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 
 		cmd.Wait()
 
+		// Once the song ends call exitChan to cancel the previous go routine that listens for stopAudioChan.
 		exitChan <- struct{}{}
 
 		if len(s.playlist.Songs) == 0 || !s.audioOn {
@@ -185,7 +213,33 @@ func (s *StreamManagementServer) Audio(in *pb.Empty, stream pb.StreamManagement_
 	return nil
 }
 
-func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement_OutputServer) error {
+func (s *StreamManagementServer) StartOutput(ctx context.Context, in *pb.Empty) (*pb.OutputResponse, error) {
+	if !s.audioOn {
+		return nil, status.Errorf(
+			codes.FailedPrecondition,
+			fmt.Sprintln("audio is not available to start output"),
+		)
+	}
+
+	if s.outputOn {
+		return nil, status.Errorf(
+			codes.FailedPrecondition,
+			fmt.Sprintln("output already started"),
+		)
+	}
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+
+	go s.Output(&wg)
+
+	wg.Wait()
+
+	return &pb.OutputResponse{Ready: true}, nil
+}
+
+func (s *StreamManagementServer) Output(wg *sync.WaitGroup) error {
 	if !s.audioOn {
 		return status.Errorf(
 			codes.FailedPrecondition,
@@ -204,6 +258,7 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 	s.outputOn = true
 	s.mu.Unlock()
 
+	exitBrChan := make(chan struct{})
 	exitChan := make(chan struct{})
 
 	err := manageNamedPipes()
@@ -240,9 +295,10 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 	}
 
 	cmd.Start()
-	stream.Send(&pb.OutputResponse{Ready: true})
 
-	go Broadcast(sdp, sdpForClientChannel, audioDataRes)
+	wg.Done()
+
+	go Broadcast(sdp, sdpForClientChannel, audioDataRes, exitBrChan)
 
 	go func(exit chan struct{}) {
 		r := bufio.NewReader(stdout)
@@ -291,6 +347,7 @@ func (s *StreamManagementServer) Output(in *pb.Empty, stream pb.StreamManagement
 		s.streamOn = false
 		s.mu.Unlock()
 
+		exitBrChan <- struct{}{}
 		exitChan <- struct{}{}
 
 		cmd.Process.Signal(syscall.SIGKILL)
@@ -314,10 +371,10 @@ func (s *StreamManagementServer) StopOutput(ctx context.Context, in *pb.Empty) (
 	return &pb.Empty{}, nil
 }
 
-func (s *StreamManagementServer) Preview(in *pb.SDP, stream pb.StreamManagement_PreviewServer) error {
+func (s *StreamManagementServer) Preview(ctx context.Context, in *pb.SDP) (*pb.SDP, error) {
 
 	if !s.audioOn || !s.outputOn {
-		return status.Errorf(
+		return nil, status.Errorf(
 			codes.FailedPrecondition,
 			fmt.Sprintln("audio or output video not available to show preview"),
 		)
@@ -326,15 +383,8 @@ func (s *StreamManagementServer) Preview(in *pb.SDP, stream pb.StreamManagement_
 	sdp <- in.Sdp
 
 	sdpForClient := <-sdpForClientChannel
-streamLoop:
-	for {
-		err := stream.Send(&pb.SDP{Sdp: sdpForClient})
-		if err != nil {
-			break streamLoop
-		}
-	}
 
-	return nil
+	return &pb.SDP{Sdp: sdpForClient}, nil
 }
 
 func (s *StreamManagementServer) StartTwitch(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
