@@ -10,7 +10,7 @@ type Props = {
 }
 
 const Top = ({ outputStatus }: Props) => {
-    const vRef = useRef<HTMLVideoElement>(null)
+    const vRef = useRef<HTMLDivElement>(null)
     const [muted, setMuted] = useState<boolean>(false)
     const [volume, setVolume] = useState<number>(10)
     const [prevVolume, setPrevVolume] = useState<number>(10)
@@ -18,24 +18,29 @@ const Top = ({ outputStatus }: Props) => {
 
     const addVideoElement = (event: RTCTrackEvent) => {
         if (event.track.kind === "video" && vRef.current) {
-            var el: HTMLVideoElement | null = vRef.current
-            el.srcObject = event.streams[0]
-            el.autoplay = true
-            el.volume = volume / 100
+            const parent: HTMLDivElement | null = vRef.current
+
+            const video: HTMLVideoElement | null = document.createElement("video")
+            video.srcObject = event.streams[0]
+            video.autoplay = true
+            video.volume = volume / 100
+
+            parent.appendChild(video)
+
             setIsLoaded(true)
         }
     }
 
     const removeVideoElement = () => {
         if (vRef.current) {
-            vRef.current.remove()
+            vRef.current.children[0].remove()
             setIsLoaded(false)
         }
     }
 
     const handleSoundMuting = () => {
-        if (vRef.current) {
-            const videoElement: HTMLVideoElement | null = vRef.current
+        if (vRef.current && vRef.current.children[0]) {
+            const videoElement: HTMLVideoElement = vRef.current.children[0] as HTMLVideoElement
 
             if (muted) {
                 videoElement.volume = prevVolume / 100
@@ -58,8 +63,8 @@ const Top = ({ outputStatus }: Props) => {
     }
 
     const handleVolume = (value: number) => {
-        if (vRef.current) {
-            const videoElement: HTMLVideoElement | null = vRef.current
+        if (vRef.current && vRef.current.children[0]) {
+            const videoElement: HTMLVideoElement | null = vRef.current.children[0] as HTMLVideoElement
             videoElement.volume = value / 100
             setVolume(value)
             if (muted) {

@@ -130,7 +130,7 @@ func (s *StreamManagementServer) Audio(wg *sync.WaitGroup) error {
 
 		song := s.playlist.Songs[0]
 
-		// Pop the song from the queue and send message to let the client know using webRTC.
+		// Pop the song from the queue and send message to let the client know using webRTC data channel.
 		go func() {
 			s.mu.Lock()
 			_, s.playlist.Songs = s.playlist.Songs[0], s.playlist.Songs[1:]
@@ -138,7 +138,7 @@ func (s *StreamManagementServer) Audio(wg *sync.WaitGroup) error {
 
 			audioDataRes <- struct{}{}
 
-			// Generate new playlist when there are ten songs left and let the client know using webRTC.
+			// Generate new playlist when there are ten songs left and let the client know using webRTC data channel.
 			if len(s.playlist.Songs) == 10 {
 				_, err := s.generateRandomPlaylist() // this functions appends new songs to the playlist method in the StreamManagementServer struct.
 				if err != nil {
@@ -259,7 +259,6 @@ func (s *StreamManagementServer) Output(wg *sync.WaitGroup) error {
 	s.mu.Unlock()
 
 	exitBrChan := make(chan struct{})
-	exitChan := make(chan struct{})
 
 	err := manageNamedPipes()
 	if err != nil {
@@ -296,13 +295,13 @@ func (s *StreamManagementServer) Output(wg *sync.WaitGroup) error {
 
 	cmd.Start()
 
-	wg.Done()
-
 	go Broadcast(sdp, sdpForClientChannel, audioDataRes, exitBrChan)
 
-	go func(exit chan struct{}) {
+	go func() {
+		defer log.Println("closing ffmpeg stdout go routine")
+		defer stdout.Close()
 		r := bufio.NewReader(stdout)
-		buffer := make([]byte, 2*1024*1024)
+		buffer := make([]byte, 1*1024*1024)
 
 	copy:
 		for {
@@ -313,11 +312,15 @@ func (s *StreamManagementServer) Output(wg *sync.WaitGroup) error {
 				if err != nil {
 					panic(err)
 				}
-			case <-exit:
-				r.Reset(r)
-				break copy
+
+			// Default case is used when the preview has been started but not the livestream.
+			// It reads the stdout from ffmpeg to a buffer, otherwise ffmpeg will hang forever until its stdout is being read.
 			default:
-				r.Discard(r.Size())
+				if len(buffer) == 0 {
+					r.Reset(r)
+					break copy
+				}
+
 				n, err := io.ReadFull(r, buffer[:cap(buffer)-cap(buffer)/2])
 				buffer = buffer[:n]
 
@@ -337,7 +340,9 @@ func (s *StreamManagementServer) Output(wg *sync.WaitGroup) error {
 			}
 		}
 
-	}(exitChan)
+	}()
+
+	wg.Done()
 
 	for v := range stopOutputChan {
 		log.Println("Killing output process ", v)
@@ -348,11 +353,13 @@ func (s *StreamManagementServer) Output(wg *sync.WaitGroup) error {
 		s.mu.Unlock()
 
 		exitBrChan <- struct{}{}
-		exitChan <- struct{}{}
-
-		cmd.Process.Signal(syscall.SIGKILL)
 
 		break
+	}
+
+	err = cmd.Process.Signal(syscall.SIGKILL)
+	if err != nil {
+		log.Fatalln(err)
 	}
 
 	cmd.Wait()

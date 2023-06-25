@@ -12,7 +12,7 @@ type Props = {
 }
 
 const Controls = ({ outputStatus, addVideoElement, removeVideoElement }: Props) => {
-    const { newPc } = usePC();
+    const { pc, newPc } = usePC();
     const [oStatus, setOStatus] = useState<OutputResponse__Output | undefined>(outputStatus)
 
     const handleStartPreview = async () => {
@@ -22,24 +22,24 @@ const Controls = ({ outputStatus, addVideoElement, removeVideoElement }: Props) 
             await createNewPlaylist()
         }
 
-        const pc: RTCPeerConnection | null = await newPc()
+        const peer: RTCPeerConnection | null = await newPc()
 
-        if (pc) {
+        if (peer) {
 
-            pc.oniceconnectionstatechange = e => console.log(pc.iceConnectionState)
+            peer.oniceconnectionstatechange = e => console.log(peer.iceConnectionState)
 
-            pc.ontrack = function (event) {
+            peer.ontrack = function (event) {
                 addVideoElement(event)
                 setOStatus({ ready: true })
             }
 
-            pc.onicecandidate = async event => {
+            peer.onicecandidate = async event => {
                 if (event.candidate === null) {
-                    const sdp = btoa(JSON.stringify(pc.localDescription))
+                    const sdp = btoa(JSON.stringify(peer.localDescription))
                     const serverSdp = await enablePreview(sdp)
 
                     try {
-                        pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(atob(serverSdp))))
+                        peer.setRemoteDescription(new RTCSessionDescription(JSON.parse(atob(serverSdp))))
                     } catch (e) {
                         console.log(e)
                     }
@@ -47,14 +47,14 @@ const Controls = ({ outputStatus, addVideoElement, removeVideoElement }: Props) 
             }
 
             // Offer to receive 1 audio, and 1 video track
-            pc.addTransceiver('video', {
+            peer.addTransceiver('video', {
                 'direction': 'sendrecv'
             })
-            pc.addTransceiver('audio', {
+            peer.addTransceiver('audio', {
                 'direction': 'sendrecv'
             })
 
-            pc.createOffer().then(d => pc.setLocalDescription(d)).catch(err => console.log(err))
+            peer.createOffer().then(d => peer.setLocalDescription(d)).catch(err => console.log(err))
         }
 
     }
@@ -64,6 +64,7 @@ const Controls = ({ outputStatus, addVideoElement, removeVideoElement }: Props) 
 
         removeVideoElement()
         setOStatus({ ready: false })
+        pc?.close()
     }
 
     return (

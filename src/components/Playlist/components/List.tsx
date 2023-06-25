@@ -70,8 +70,8 @@ const List = ({ serverPlaylist }: Props) => {
 
     useEffect(() => {
         if (pc && updatePlaylistDataChan) {
-            updatePlaylistDataChan.onclose = () => console.log('updatePlaylistChan has closed')
-            updatePlaylistDataChan.onopen = () => console.log('updatePlaylistChan has opened')
+            updatePlaylistDataChan.onclose = () => console.log('data channel has closed')
+            updatePlaylistDataChan.onopen = () => console.log('data channel has opened')
 
             updatePlaylistDataChan.onmessage = async e => {
                 const playlist = await getCurrentPlaylist();

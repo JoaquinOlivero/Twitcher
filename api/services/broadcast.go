@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -68,9 +67,9 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	}
 	defer func() {
 		if cErr := peerConnection.Close(); cErr != nil {
-			fmt.Printf("cannot close peerConnection: %v\n", cErr)
+			log.Printf("cannot close peerConnection: %v\n", cErr)
 		}
-		fmt.Println("peer connection closed")
+		log.Println("peer connection closed")
 	}()
 
 	iceConnectedCtx, iceConnectedCtxCancel := context.WithCancel(context.Background())
@@ -104,7 +103,7 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	// Before these packets are returned they are processed by interceptors. For things
 	// like NACK this needs to be called.
 	go func(exit <-chan struct{}) {
-		defer fmt.Println("closing video rtcp")
+		defer log.Println("closing video rtcp")
 		rtcpBuf := make([]byte, 1500)
 
 	outer:
@@ -121,7 +120,7 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	}(exit)
 
 	go func(exit <-chan struct{}) {
-		defer fmt.Println("closing video")
+		defer log.Println("closing video")
 		if err != nil {
 			panic(err)
 		}
@@ -190,7 +189,7 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	// Before these packets are returned they are processed by interceptors. For things
 	// like NACK this needs to be called.
 	go func(exit <-chan struct{}) {
-		defer fmt.Println("closing audio rtcp")
+		defer log.Println("closing audio rtcp")
 		rtcpBuf := make([]byte, 1500)
 
 	outer:
@@ -207,7 +206,7 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	}(exit)
 
 	go func(exit <-chan struct{}) {
-		defer fmt.Println("closing audio")
+		defer log.Println("closing audio")
 		// Open on oggfile in non-checksum mode.
 		ogg, _, oggErr := NewWith(audioPipe)
 		if oggErr != nil {
@@ -234,7 +233,7 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 			default:
 				pageData, pageHeader, oggErr := ogg.ParseNextPage()
 				if oggErr == io.EOF {
-					fmt.Printf("All audio pages parsed and sent")
+					log.Printf("All audio pages parsed and sent")
 				}
 
 				if oggErr != nil {
@@ -258,11 +257,12 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 	peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
 		// Register channel opening handling
 		d.OnOpen(func() {
+			log.Println("data channel has been opened")
 		outer:
 			for {
 				select {
 				case <-exit:
-					fmt.Println("exit data channel for loop")
+					log.Println("exit data channel for loop")
 					d.Close()
 					break outer
 				case <-playlistUpdate:
@@ -418,11 +418,12 @@ outer:
 			peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
 				// Register channel opening handling
 				d.OnOpen(func() {
+					log.Println("data channel has been opened")
 				outer:
 					for {
 						select {
 						case <-exit:
-							fmt.Println("exit data channel for loop")
+							log.Println("exit data channel for loop")
 							d.Close()
 							break outer
 						case <-playlistUpdate:

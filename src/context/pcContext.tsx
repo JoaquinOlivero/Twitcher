@@ -29,11 +29,15 @@ export default function PCProvider({ children }: Props) {
     const [updatePlaylistDataChan, setUpdatePlaylistDataChan] = useState<RTCDataChannel | null>(null)
 
     const newPc = async () => {
+        setPc(null)
+        setUpdatePlaylistDataChan(null)
+
         let pc = new RTCPeerConnection({
             iceServers: [{
                 urls: 'stun:stun.l.google.com:19302'
             }]
         })
+
 
         let dataChan = pc.createDataChannel('updateplaylist')
 

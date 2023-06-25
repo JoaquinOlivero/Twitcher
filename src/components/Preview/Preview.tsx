@@ -14,7 +14,7 @@ type Props = {
     volume: number
 }
 
-export type Ref = HTMLVideoElement;
+export type Ref = HTMLDivElement;
 
 
 const Preview = forwardRef<Ref, Props>((props, vRef) => {
@@ -91,9 +91,7 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
                 }
             </div>
 
-            <div id="remoteVideos" className="absolute top-0 w-full h-full">
-
-                <video ref={vRef}></video>
+            <div className="absolute top-0 w-full h-full" ref={vRef}>
             </div>
 
         </div >
