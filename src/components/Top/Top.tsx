@@ -1,15 +1,15 @@
 'use client';
 
-import { OutputResponse__Output } from "@/pb/service/OutputResponse";
 import Preview from "../Preview/Preview";
 import Controls from "../Controls/Controls";
 import { useRef, useState } from "react";
+import { StatusResponse__Output } from "@/pb/service/StatusResponse";
 
 type Props = {
-    outputStatus: OutputResponse__Output | undefined
+    status: StatusResponse__Output | undefined
 }
 
-const Top = ({ outputStatus }: Props) => {
+const Top = ({ status }: Props) => {
     const vRef = useRef<HTMLDivElement>(null)
     const [muted, setMuted] = useState<boolean>(false)
     const [volume, setVolume] = useState<number>(10)
@@ -85,7 +85,7 @@ const Top = ({ outputStatus }: Props) => {
 
             </div>
             <Preview
-                outputStatus={outputStatus}
+                status={status}
                 addVideoElement={addVideoElement}
                 handleSoundMuting={handleSoundMuting}
                 handleVolume={handleVolume}
@@ -95,7 +95,7 @@ const Top = ({ outputStatus }: Props) => {
                 ref={vRef}
             />
             <Controls
-                outputStatus={outputStatus}
+                status={status}
                 addVideoElement={addVideoElement}
                 removeVideoElement={removeVideoElement}
             />

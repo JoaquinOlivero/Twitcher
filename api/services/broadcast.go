@@ -222,7 +222,8 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 		// It is important to use a time.Ticker instead of time.Sleep because
 		// * avoids accumulating skew, just calling time.Sleep didn't compensate for the time spent parsing the data
 		// * works around latency issues with Sleep (see https://github.com/golang/go/issues/44343)
-		oggPageDuration := time.Microsecond * 1000
+		// oggPageDuration := time.Microsecond * 1000
+		oggPageDuration := time.Millisecond * 20
 		ticker := time.NewTicker(oggPageDuration)
 
 	outer:
@@ -353,7 +354,6 @@ outer:
 			break outer
 		case sdp := <-sdpFromClient:
 			recvOnlyOffer := webrtc.SessionDescription{}
-			// Decode(<-sdpFromClient, &recvOnlyOffer)
 			Decode(sdp, &recvOnlyOffer)
 
 			// Create a new PeerConnection

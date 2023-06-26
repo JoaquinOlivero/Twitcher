@@ -22,12 +22,13 @@ const (
 	StreamManagement_CreateSongPlaylist_FullMethodName  = "/service.StreamManagement/CreateSongPlaylist"
 	StreamManagement_CurrentSongPlaylist_FullMethodName = "/service.StreamManagement/CurrentSongPlaylist"
 	StreamManagement_UpdateSongPlaylist_FullMethodName  = "/service.StreamManagement/UpdateSongPlaylist"
-	StreamManagement_OutputStatus_FullMethodName        = "/service.StreamManagement/OutputStatus"
 	StreamManagement_Preview_FullMethodName             = "/service.StreamManagement/Preview"
-	StreamManagement_StartTwitch_FullMethodName         = "/service.StreamManagement/StartTwitch"
+	StreamManagement_StartStream_FullMethodName         = "/service.StreamManagement/StartStream"
+	StreamManagement_StopStream_FullMethodName          = "/service.StreamManagement/StopStream"
 	StreamManagement_StartAudio_FullMethodName          = "/service.StreamManagement/StartAudio"
 	StreamManagement_StartOutput_FullMethodName         = "/service.StreamManagement/StartOutput"
 	StreamManagement_StopOutput_FullMethodName          = "/service.StreamManagement/StopOutput"
+	StreamManagement_Status_FullMethodName              = "/service.StreamManagement/Status"
 )
 
 // StreamManagementClient is the client API for StreamManagement service.
@@ -37,12 +38,13 @@ type StreamManagementClient interface {
 	CreateSongPlaylist(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*SongPlaylist, error)
 	CurrentSongPlaylist(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*SongPlaylist, error)
 	UpdateSongPlaylist(ctx context.Context, in *SongPlaylist, opts ...grpc.CallOption) (*Empty, error)
-	OutputStatus(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*OutputResponse, error)
 	Preview(ctx context.Context, in *SDP, opts ...grpc.CallOption) (*SDP, error)
-	StartTwitch(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
+	StartStream(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
+	StopStream(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 	StartAudio(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*AudioResponse, error)
-	StartOutput(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*OutputResponse, error)
+	StartOutput(ctx context.Context, in *OutputRequest, opts ...grpc.CallOption) (*OutputResponse, error)
 	StopOutput(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
+	Status(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*StatusResponse, error)
 }
 
 type streamManagementClient struct {
@@ -80,15 +82,6 @@ func (c *streamManagementClient) UpdateSongPlaylist(ctx context.Context, in *Son
 	return out, nil
 }
 
-func (c *streamManagementClient) OutputStatus(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*OutputResponse, error) {
-	out := new(OutputResponse)
-	err := c.cc.Invoke(ctx, StreamManagement_OutputStatus_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *streamManagementClient) Preview(ctx context.Context, in *SDP, opts ...grpc.CallOption) (*SDP, error) {
 	out := new(SDP)
 	err := c.cc.Invoke(ctx, StreamManagement_Preview_FullMethodName, in, out, opts...)
@@ -98,9 +91,18 @@ func (c *streamManagementClient) Preview(ctx context.Context, in *SDP, opts ...g
 	return out, nil
 }
 
-func (c *streamManagementClient) StartTwitch(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
+func (c *streamManagementClient) StartStream(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := c.cc.Invoke(ctx, StreamManagement_StartTwitch_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, StreamManagement_StartStream_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *streamManagementClient) StopStream(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, StreamManagement_StopStream_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +118,7 @@ func (c *streamManagementClient) StartAudio(ctx context.Context, in *Empty, opts
 	return out, nil
 }
 
-func (c *streamManagementClient) StartOutput(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*OutputResponse, error) {
+func (c *streamManagementClient) StartOutput(ctx context.Context, in *OutputRequest, opts ...grpc.CallOption) (*OutputResponse, error) {
 	out := new(OutputResponse)
 	err := c.cc.Invoke(ctx, StreamManagement_StartOutput_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -134,6 +136,15 @@ func (c *streamManagementClient) StopOutput(ctx context.Context, in *Empty, opts
 	return out, nil
 }
 
+func (c *streamManagementClient) Status(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
+	err := c.cc.Invoke(ctx, StreamManagement_Status_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StreamManagementServer is the server API for StreamManagement service.
 // All implementations must embed UnimplementedStreamManagementServer
 // for forward compatibility
@@ -141,12 +152,13 @@ type StreamManagementServer interface {
 	CreateSongPlaylist(context.Context, *Empty) (*SongPlaylist, error)
 	CurrentSongPlaylist(context.Context, *Empty) (*SongPlaylist, error)
 	UpdateSongPlaylist(context.Context, *SongPlaylist) (*Empty, error)
-	OutputStatus(context.Context, *Empty) (*OutputResponse, error)
 	Preview(context.Context, *SDP) (*SDP, error)
-	StartTwitch(context.Context, *Empty) (*Empty, error)
+	StartStream(context.Context, *Empty) (*Empty, error)
+	StopStream(context.Context, *Empty) (*Empty, error)
 	StartAudio(context.Context, *Empty) (*AudioResponse, error)
-	StartOutput(context.Context, *Empty) (*OutputResponse, error)
+	StartOutput(context.Context, *OutputRequest) (*OutputResponse, error)
 	StopOutput(context.Context, *Empty) (*Empty, error)
+	Status(context.Context, *Empty) (*StatusResponse, error)
 	mustEmbedUnimplementedStreamManagementServer()
 }
 
@@ -163,23 +175,26 @@ func (UnimplementedStreamManagementServer) CurrentSongPlaylist(context.Context, 
 func (UnimplementedStreamManagementServer) UpdateSongPlaylist(context.Context, *SongPlaylist) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateSongPlaylist not implemented")
 }
-func (UnimplementedStreamManagementServer) OutputStatus(context.Context, *Empty) (*OutputResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method OutputStatus not implemented")
-}
 func (UnimplementedStreamManagementServer) Preview(context.Context, *SDP) (*SDP, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Preview not implemented")
 }
-func (UnimplementedStreamManagementServer) StartTwitch(context.Context, *Empty) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method StartTwitch not implemented")
+func (UnimplementedStreamManagementServer) StartStream(context.Context, *Empty) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StartStream not implemented")
+}
+func (UnimplementedStreamManagementServer) StopStream(context.Context, *Empty) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StopStream not implemented")
 }
 func (UnimplementedStreamManagementServer) StartAudio(context.Context, *Empty) (*AudioResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartAudio not implemented")
 }
-func (UnimplementedStreamManagementServer) StartOutput(context.Context, *Empty) (*OutputResponse, error) {
+func (UnimplementedStreamManagementServer) StartOutput(context.Context, *OutputRequest) (*OutputResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartOutput not implemented")
 }
 func (UnimplementedStreamManagementServer) StopOutput(context.Context, *Empty) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopOutput not implemented")
+}
+func (UnimplementedStreamManagementServer) Status(context.Context, *Empty) (*StatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
 }
 func (UnimplementedStreamManagementServer) mustEmbedUnimplementedStreamManagementServer() {}
 
@@ -248,24 +263,6 @@ func _StreamManagement_UpdateSongPlaylist_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
-func _StreamManagement_OutputStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(StreamManagementServer).OutputStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: StreamManagement_OutputStatus_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StreamManagementServer).OutputStatus(ctx, req.(*Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _StreamManagement_Preview_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SDP)
 	if err := dec(in); err != nil {
@@ -284,20 +281,38 @@ func _StreamManagement_Preview_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-func _StreamManagement_StartTwitch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _StreamManagement_StartStream_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(StreamManagementServer).StartTwitch(ctx, in)
+		return srv.(StreamManagementServer).StartStream(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: StreamManagement_StartTwitch_FullMethodName,
+		FullMethod: StreamManagement_StartStream_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StreamManagementServer).StartTwitch(ctx, req.(*Empty))
+		return srv.(StreamManagementServer).StartStream(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StreamManagement_StopStream_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StreamManagementServer).StopStream(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StreamManagement_StopStream_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StreamManagementServer).StopStream(ctx, req.(*Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -321,7 +336,7 @@ func _StreamManagement_StartAudio_Handler(srv interface{}, ctx context.Context, 
 }
 
 func _StreamManagement_StartOutput_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
+	in := new(OutputRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -333,7 +348,7 @@ func _StreamManagement_StartOutput_Handler(srv interface{}, ctx context.Context,
 		FullMethod: StreamManagement_StartOutput_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StreamManagementServer).StartOutput(ctx, req.(*Empty))
+		return srv.(StreamManagementServer).StartOutput(ctx, req.(*OutputRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -352,6 +367,24 @@ func _StreamManagement_StopOutput_Handler(srv interface{}, ctx context.Context, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StreamManagementServer).StopOutput(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StreamManagement_Status_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StreamManagementServer).Status(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StreamManagement_Status_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StreamManagementServer).Status(ctx, req.(*Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -376,16 +409,16 @@ var StreamManagement_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _StreamManagement_UpdateSongPlaylist_Handler,
 		},
 		{
-			MethodName: "OutputStatus",
-			Handler:    _StreamManagement_OutputStatus_Handler,
-		},
-		{
 			MethodName: "Preview",
 			Handler:    _StreamManagement_Preview_Handler,
 		},
 		{
-			MethodName: "StartTwitch",
-			Handler:    _StreamManagement_StartTwitch_Handler,
+			MethodName: "StartStream",
+			Handler:    _StreamManagement_StartStream_Handler,
+		},
+		{
+			MethodName: "StopStream",
+			Handler:    _StreamManagement_StopStream_Handler,
 		},
 		{
 			MethodName: "StartAudio",
@@ -398,6 +431,10 @@ var StreamManagement_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StopOutput",
 			Handler:    _StreamManagement_StopOutput_Handler,
+		},
+		{
+			MethodName: "Status",
+			Handler:    _StreamManagement_Status_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -9,15 +9,16 @@ service StreamManagement {
     rpc CurrentSongPlaylist (Empty) returns (SongPlaylist) {};
     rpc UpdateSongPlaylist (SongPlaylist) returns (Empty) {};
     
-    rpc OutputStatus (Empty) returns (OutputResponse) {};
-
-    rpc Preview (SDP) returns (SDP) {};
-    rpc StartTwitch (Empty) returns (Empty) {};
     
-    rpc StartAudio (Empty) returns (AudioResponse) {};
-    rpc StartOutput (Empty) returns (OutputResponse) {};
+    rpc Preview (SDP) returns (SDP) {};
+    rpc StartStream (Empty) returns (Empty) {};
+    rpc StopStream (Empty) returns (Empty) {};
 
+    rpc StartAudio (Empty) returns (AudioResponse) {};
+
+    rpc StartOutput (OutputRequest) returns (OutputResponse) {};
     rpc StopOutput (Empty) returns (Empty) {};
+    rpc Status (Empty) returns (StatusResponse) {};
 }
 
 message Song {
@@ -37,8 +38,18 @@ message AudioResponse {
     bool ready = 1;
 }
 
+message OutputRequest {
+    string mode = 1;
+}
+
 message OutputResponse {
     bool ready = 1;
+}
+
+message StatusResponse {
+    bool output = 1;
+    bool audio = 2;
+    bool stream = 3;
 }
 
 message Empty {

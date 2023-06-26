@@ -1,11 +1,11 @@
 'use client';
 import { enablePreview } from "@/actions";
 import { usePC } from "@/context/pcContext";
-import { OutputResponse__Output } from "@/pb/service/OutputResponse";
+import { StatusResponse__Output } from "@/pb/service/StatusResponse";
 import { forwardRef, useEffect } from "react";
 
 type Props = {
-    outputStatus: OutputResponse__Output | undefined
+    status: StatusResponse__Output | undefined
     addVideoElement: Function
     handleSoundMuting: Function
     handleVolume: (value: number) => void
@@ -19,7 +19,7 @@ export type Ref = HTMLDivElement;
 
 const Preview = forwardRef<Ref, Props>((props, vRef) => {
     const { newPc } = usePC();
-    const { outputStatus, addVideoElement, muted, handleSoundMuting, isLoaded, volume, handleVolume } = props
+    const { status, addVideoElement, muted, handleSoundMuting, isLoaded, volume, handleVolume } = props
 
 
     const showPreview = async () => {
@@ -60,7 +60,7 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
     }
 
     useEffect(() => {
-        if (outputStatus && outputStatus.ready) {
+        if (status && status.output) {
             showPreview()
         }
     }, [])

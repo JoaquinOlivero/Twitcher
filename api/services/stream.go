@@ -58,7 +58,7 @@ var (
 
 	stopAudioChan = make(chan struct{})
 
-	streamChan = make(chan struct{})
+	streamStopChan = make(chan struct{})
 
 	sr, sw = io.Pipe()
 )
@@ -213,7 +213,7 @@ func (s *StreamManagementServer) Audio(wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (s *StreamManagementServer) StartOutput(ctx context.Context, in *pb.Empty) (*pb.OutputResponse, error) {
+func (s *StreamManagementServer) StartOutput(ctx context.Context, in *pb.OutputRequest) (*pb.OutputResponse, error) {
 	if !s.audioOn {
 		return nil, status.Errorf(
 			codes.FailedPrecondition,
@@ -232,14 +232,14 @@ func (s *StreamManagementServer) StartOutput(ctx context.Context, in *pb.Empty) 
 
 	wg.Add(1)
 
-	go s.Output(&wg)
+	go s.Output(&wg, in.Mode)
 
 	wg.Wait()
 
 	return &pb.OutputResponse{Ready: true}, nil
 }
 
-func (s *StreamManagementServer) Output(wg *sync.WaitGroup) error {
+func (s *StreamManagementServer) Output(wg *sync.WaitGroup, mode string) error {
 	if !s.audioOn {
 		return status.Errorf(
 			codes.FailedPrecondition,
@@ -284,6 +284,7 @@ func (s *StreamManagementServer) Output(wg *sync.WaitGroup) error {
 		|
 		[f=mpegts:select=\'v:0,a\']pipe:1`,
 	)
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		panic(err)
@@ -295,30 +296,32 @@ func (s *StreamManagementServer) Output(wg *sync.WaitGroup) error {
 
 	cmd.Start()
 
+	// webRTC connection
 	go Broadcast(sdp, sdpForClientChannel, audioDataRes, exitBrChan)
 
+	// This go routine handles the stdout ("pipe:1") from the ffmpeg instance depending if it is needed for a preview in the web or a livestream.
 	go func() {
 		defer log.Println("closing ffmpeg stdout go routine")
 		defer stdout.Close()
-		r := bufio.NewReader(stdout)
-		buffer := make([]byte, 1*1024*1024)
 
-	copy:
-		for {
-			select {
-			case <-streamChan:
-				r.Reset(r)
-				_, err := io.Copy(sw, stdout)
-				if err != nil {
-					panic(err)
-				}
+		switch mode {
+		case "stream":
+			_, err := io.Copy(sw, stdout)
+			if err != nil {
+				log.Println(err)
+			}
 
-			// Default case is used when the preview has been started but not the livestream.
-			// It reads the stdout from ffmpeg to a buffer, otherwise ffmpeg will hang forever until its stdout is being read.
-			default:
+		// "preview" case is used when the preview has been started but not the livestream.
+		// It reads the stdout from ffmpeg to a buffer, otherwise ffmpeg will hang forever until its stdout is being read.
+		case "preview":
+			r := bufio.NewReader(stdout)
+			buffer := make([]byte, 1*1024*1024)
+
+		preview:
+			for {
 				if len(buffer) == 0 {
 					r.Reset(r)
-					break copy
+					break preview
 				}
 
 				n, err := io.ReadFull(r, buffer[:cap(buffer)-cap(buffer)/2])
@@ -336,10 +339,11 @@ func (s *StreamManagementServer) Output(wg *sync.WaitGroup) error {
 						fmt.Fprintln(os.Stderr, err)
 						break
 					}
+
 				}
 			}
-		}
 
+		}
 	}()
 
 	wg.Done()
@@ -367,8 +371,8 @@ func (s *StreamManagementServer) Output(wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (s *StreamManagementServer) OutputStatus(ctx context.Context, in *pb.Empty) (*pb.OutputResponse, error) {
-	return &pb.OutputResponse{Ready: s.outputOn}, nil
+func (s *StreamManagementServer) Status(ctx context.Context, in *pb.Empty) (*pb.StatusResponse, error) {
+	return &pb.StatusResponse{Audio: s.audioOn, Output: s.outputOn, Stream: s.streamOn}, nil
 }
 
 func (s *StreamManagementServer) StopOutput(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
@@ -394,13 +398,15 @@ func (s *StreamManagementServer) Preview(ctx context.Context, in *pb.SDP) (*pb.S
 	return &pb.SDP{Sdp: sdpForClient}, nil
 }
 
-func (s *StreamManagementServer) StartTwitch(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
+func (s *StreamManagementServer) StartStream(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
 	if s.streamOn {
 		return &pb.Empty{}, status.Errorf(
 			codes.FailedPrecondition,
 			fmt.Sprintln("stream has already started."),
 		)
 	}
+
+	defer log.Println("Twitch stream stopped")
 
 	s.mu.Lock()
 	s.streamOn = true
@@ -410,13 +416,15 @@ func (s *StreamManagementServer) StartTwitch(ctx context.Context, in *pb.Empty) 
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	go twitchApi.Alerts(&wg)
+	exitAlerts := make(chan struct{})
+
+	go twitchApi.Alerts(&wg, exitAlerts)
 
 	wg.Wait()
 
 	cmd := exec.Command("ffmpeg", "-hide_banner",
 		"-re", "-stream_loop", "-1",
-		"-i", "pipe:0",
+		"-thread_queue_size", "256", "-i", "pipe:0",
 		"-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
 		"-thread_queue_size", "256", "-i", "files/stream/alert",
 		"-filter_complex", "[0][1]overlay=5:5[v1];[v1][2]overlay=W-w+10:H-h+60[vout]", // Filter that actually places the overlays over the video.
@@ -439,10 +447,39 @@ func (s *StreamManagementServer) StartTwitch(ctx context.Context, in *pb.Empty) 
 
 	cmd.Start()
 
-	streamChan <- struct{}{}
+	// Wait until stop command is received.
+	<-streamStopChan
+
+	log.Println("disconnecting from Twitch's websocket server")
+	exitAlerts <- struct{}{}
+
+	log.Println("stopping stream")
+	err := cmd.Process.Signal(syscall.SIGKILL)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	err = sr.Close()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = sw.Close()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	s.mu.Lock()
+	s.outputOn = false
+	s.streamOn = false
+	s.mu.Unlock()
 
 	cmd.Wait()
 
+	return &pb.Empty{}, nil
+}
+
+func (s *StreamManagementServer) StopStream(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
+	streamStopChan <- struct{}{}
 	return &pb.Empty{}, nil
 }
 

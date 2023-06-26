@@ -1,19 +1,19 @@
 'use client';
 
-import { createNewPlaylist, enablePreview, getCurrentPlaylist, stopOutput } from "@/actions";
+import { checkStatus, createNewPlaylist, enablePreview, getCurrentPlaylist, startStream, stopOutput, stopStream } from "@/actions";
 import { usePC } from "@/context/pcContext";
-import { OutputResponse__Output } from "@/pb/service/OutputResponse";
+import { StatusResponse__Output } from "@/pb/service/StatusResponse";
 import { useState } from "react";
 
 type Props = {
-    outputStatus: OutputResponse__Output | undefined
+    status: StatusResponse__Output | undefined
     addVideoElement: Function
     removeVideoElement: Function
 }
 
-const Controls = ({ outputStatus, addVideoElement, removeVideoElement }: Props) => {
+const Controls = ({ status, addVideoElement, removeVideoElement }: Props) => {
     const { pc, newPc } = usePC();
-    const [oStatus, setOStatus] = useState<OutputResponse__Output | undefined>(outputStatus)
+    const [oStatus, setOStatus] = useState<StatusResponse__Output | undefined>(status)
 
     const handleStartPreview = async () => {
 
@@ -28,9 +28,10 @@ const Controls = ({ outputStatus, addVideoElement, removeVideoElement }: Props) 
 
             peer.oniceconnectionstatechange = e => console.log(peer.iceConnectionState)
 
-            peer.ontrack = function (event) {
+            peer.ontrack = async function (event) {
                 addVideoElement(event)
-                setOStatus({ ready: true })
+                const status: StatusResponse__Output | undefined = await checkStatus()
+                setOStatus(status)
             }
 
             peer.onicecandidate = async event => {
@@ -63,7 +64,29 @@ const Controls = ({ outputStatus, addVideoElement, removeVideoElement }: Props) 
         await stopOutput()
 
         removeVideoElement()
-        setOStatus({ ready: false })
+
+        const status: StatusResponse__Output | undefined = await checkStatus()
+        setOStatus(status)
+        pc?.close()
+    }
+
+    const handleStartStream = async () => {
+        await handleStartPreview()
+        await startStream()
+
+        const status: StatusResponse__Output | undefined = await checkStatus()
+        setOStatus(status)
+    }
+
+    const handleStopStream = async () => {
+        await stopStream()
+
+        await stopOutput()
+
+        removeVideoElement()
+
+        const status: StatusResponse__Output | undefined = await checkStatus()
+        setOStatus(status)
         pc?.close()
     }
 
@@ -72,18 +95,32 @@ const Controls = ({ outputStatus, addVideoElement, removeVideoElement }: Props) 
             <div className='w-[95%] h-full bg-foreground rounded-b-xl flex justify-center items-center'>
 
                 <div className="w-[98%] h-[95%]">
-                    {!oStatus || !oStatus.ready ?
-                        <button onClick={() => handleStartPreview()} className="relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-cyan-500 to-blue-500 group-hover:from-cyan-500 group-hover:to-blue-500 hover:text-white dark:text-white">
-                            <span className="relative px-2.5 py-1.5 transition-all ease-in duration-75 bg-white dark:bg-foreground rounded-md group-hover:bg-opacity-0">
-                                Start Preview
-                            </span>
+                    {!oStatus || !oStatus.stream ?
+                        <button onClick={() => handleStartStream()} className="text-white">
+                            Start Stream
                         </button>
                         :
-                        <button onClick={() => handleStopPreview()} className="relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-pink-500 to-orange-400 group-hover:from-pink-500 group-hover:to-orange-400 hover:text-white dark:text-white">
-                            <span className="relative px-2.5 py-1.5 transition-all ease-in duration-75 bg-white dark:bg-foreground rounded-md group-hover:bg-opacity-0">
-                                Stop Preview
-                            </span>
+                        <button onClick={() => handleStopStream()} className="text-white">
+                            Stop Stream
                         </button>
+                    }
+
+                    {!oStatus || !oStatus.stream &&
+                        <>
+                            {!oStatus || !oStatus.output ?
+                                <button onClick={() => handleStartPreview()} className="relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-cyan-500 to-blue-500 group-hover:from-cyan-500 group-hover:to-blue-500 hover:text-white dark:text-white">
+                                    <span className="relative px-2.5 py-1.5 transition-all ease-in duration-75 bg-white dark:bg-foreground rounded-md group-hover:bg-opacity-0">
+                                        Start Preview
+                                    </span>
+                                </button>
+                                :
+                                <button onClick={() => handleStopPreview()} className="relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-pink-500 to-orange-400 group-hover:from-pink-500 group-hover:to-orange-400 hover:text-white dark:text-white">
+                                    <span className="relative px-2.5 py-1.5 transition-all ease-in duration-75 bg-white dark:bg-foreground rounded-md group-hover:bg-opacity-0">
+                                        Stop Preview
+                                    </span>
+                                </button>
+                            }
+                        </>
                     }
                 </div>
 

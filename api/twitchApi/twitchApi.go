@@ -57,51 +57,60 @@ type ValidateAccessToken struct {
 	Message   string `json:"message"`
 }
 
-func Alerts(wgAlerts *sync.WaitGroup) error {
+func Alerts(wgAlerts *sync.WaitGroup, exit <-chan struct{}) error {
+	defer log.Println("closing alerts")
 	// Go routine to handle alert notifications. The notifications come from Twitch's websocket api.
 	wgAlertsI := 1
 
 	// Go routine to validate access token and refresh it if necessary.
 	// To subscribe to Twitch's websocket events it is required to have a valid user access token.
 	var wg sync.WaitGroup
-	wgI := 1
-	wg.Add(wgI)
+	wg.Add(1)
 
-	go func() {
-		for {
+	exitValidation := make(chan struct{}, 1)
 
-			token, err := validateToken()
-			if err != nil {
-				log.Println(err)
-			}
+	go func(exit <-chan struct{}) error {
+		defer log.Println("stopping token validation")
 
-			// Once there is a valid access token. Decrement the waitgroup count to zero and unblock the connection to Twitch's websocket server.
-			if wgI == 1 {
-				wg.Done()
-				wgI--
-			}
-
-			// Hold loop until 10 minutes before the access token expires and then refresh the token.
-			if token.ExpiresIn > 10*60 {
-				sleepDuration := time.Duration(token.ExpiresIn - (10 * 60))
-				time.Sleep(sleepDuration * time.Second)
-				log.Println("Access token will expire in ten minutes. Getting a new one.")
-			}
-
-			refreshToken()
+		token, err := validateToken()
+		if err != nil {
+			return err
 		}
-	}()
+		wg.Done()
+
+		start := time.Now()
+
+		log.Printf("Twitch's access token expires in: %v minutes", token.ExpiresIn/60)
+
+	validation:
+		for {
+			select {
+			case <-exit:
+				break validation
+			default:
+				t := time.Now()
+				elapsed := t.Sub(start)
+				if elapsed.Round(time.Second) >= time.Duration(token.ExpiresIn*int(time.Second))-10*60*time.Second {
+					start = time.Now()
+					log.Println("Access token will expire in approximately ten minutes. Getting a new one.")
+					refreshToken()
+				}
+			}
+		}
+
+		return nil
+	}(exitValidation)
 
 	// wait until there is a valid acces token availabe to use.
 	wg.Wait()
 
 	// channels that will contain the type of notification and the username.
 	channel := make(chan SubscriptionChannel, 300)
+	exitAlert := make(chan struct{}, 1)
 	stop := make(chan struct{}, 1)
-	exit := make(chan struct{}, 1)
 
 	// Go routine to catch notifications coming from the websocket connection to Twitch.
-	go func() {
+	go func(exit <-chan struct{}) {
 		// alert named pipe
 		alertPipePath := "files/stream/alert"
 
@@ -167,23 +176,24 @@ func Alerts(wgAlerts *sync.WaitGroup) error {
 				}
 
 				cmd.Start()
+
 			placeholder:
-				for {
-					select {
-					case <-stop:
-						cmd.Process.Signal(syscall.SIGKILL)
-						break placeholder
-					}
+				for range stop {
+					cmd.Process.Signal(syscall.SIGKILL)
+					break placeholder
 				}
+
+				cmd.Wait()
 			}
 		}
-	}()
+	}(exitAlert)
 
 	var wsURL string
 	wsURL = "wss://eventsub.wss.twitch.tv/ws"
 	// wsURL = "ws://127.0.0.1:8080/ws"
 	reconnect := make(chan struct{}, 1)
 
+wsclient:
 	for {
 
 		//Create a client instance
@@ -242,13 +252,27 @@ func Alerts(wgAlerts *sync.WaitGroup) error {
 		// This will send websocket handshake request to socketcluster-server
 		socket.Connect()
 
-		// Close socket connection and continue loop to reconnect to new server address.
-		// This channel waiting also blocks the infinite loop from continuing, allowing to maintain the websocket connection and create a new one when needed.
-		<-reconnect
-		log.Println("reconnecting...")
-		socket.Close()
-		continue
+		for {
+			select {
+			// Close socket connection and continue loop to reconnect to new server address.
+			// This channel waiting also blocks the infinite loop from continuing, allowing to maintain the websocket connection and create a new one when needed.
+			case <-reconnect:
+				log.Println("reconnecting...")
+				socket.Close()
+				continue wsclient
+			case <-exit:
+				stop <- struct{}{}
+				exitAlert <- struct{}{}
+				exitValidation <- struct{}{}
+				log.Println("closing websocket connection")
+				socket.Close()
+				break wsclient
+			}
+		}
+
 	}
+
+	return nil
 }
 
 // Validate access token.

@@ -7,6 +7,7 @@ import { ProtoGrpcType } from "@/pb/songs"
 import { SongPlaylist__Output } from './pb/service/SongPlaylist';
 import { OutputResponse__Output } from './pb/service/OutputResponse';
 import { revalidatePath } from 'next/cache';
+import { StatusResponse__Output } from './pb/service/StatusResponse';
 
 const PROTO_FILE = "../../../../proto/songs.proto"
 
@@ -104,7 +105,7 @@ export const updateSongPlaylist = async (songs: SongPlaylist__Output) => {
 export const enablePreview = async (clientSdp: string) => {
     await startAudio()
 
-    await startOutput()
+    await startOutput("preview")
 
     const deadline = new Date()
     deadline.setSeconds(deadline.getSeconds() + 5)
@@ -142,7 +143,7 @@ export const startStream = async () => {
 
     await startAudio()
 
-    await startOutput()
+    await startOutput("stream")
 
     const deadline = new Date()
     deadline.setSeconds(deadline.getSeconds() + 5)
@@ -153,7 +154,7 @@ export const startStream = async () => {
             return
         }
 
-        client.StartTwitch({}, (err, res) => {
+        client.StartStream({}, (err, res) => {
             if (err) {
                 // console.log(err)
                 return
@@ -194,7 +195,7 @@ const startAudio = async () => {
     return ready
 }
     
-const startOutput = async () => {
+const startOutput = async (mode: string) => {
     const deadline = new Date()
     deadline.setSeconds(deadline.getSeconds() + 5)
     
@@ -206,7 +207,7 @@ const startOutput = async () => {
                 return false
             }
             
-            client.StartOutput({}, (err, res) => {
+            client.StartOutput({mode: mode}, (err, res) => {
                 if (err) {
                     // console.log(err)
                     resolve(false)
@@ -225,18 +226,38 @@ const startOutput = async () => {
     return ready
 }
 
-export const checkOutputStatus = async () => {
+
+export const stopStream = async () => {
     const deadline = new Date()
     deadline.setSeconds(deadline.getSeconds() + 5)
 
-    const status: OutputResponse__Output | undefined = await new Promise(resolve => {
+    client.waitForReady(deadline, (err) => {
+        if (err) {
+            // console.log(err)
+            return
+        }
+
+        client.StopStream({}, (err, res) => {
+            if (err) {
+                // console.log(err)
+                return
+            }
+        })
+    })
+}
+
+export const checkStatus = async () => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    const status: StatusResponse__Output | undefined = await new Promise(resolve => {
         client.waitForReady(deadline, (err) => {
             if (err) {
                 // console.log(err)
                 resolve(undefined)
             }
 
-            client.outputStatus({}, (err, res) => {
+            client.Status({}, (err, res) => {
                 if (err) {
                     // console.log(err)
                     resolve(undefined)

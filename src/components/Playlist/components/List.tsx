@@ -74,6 +74,7 @@ const List = ({ serverPlaylist }: Props) => {
             updatePlaylistDataChan.onopen = () => console.log('data channel has opened')
 
             updatePlaylistDataChan.onmessage = async e => {
+                console.log("new song")
                 const playlist = await getCurrentPlaylist();
                 setList(playlist)
             }
