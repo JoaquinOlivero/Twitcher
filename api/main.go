@@ -3,27 +3,25 @@ package main
 import (
 	"Twitcher/pb"
 	service "Twitcher/services"
-	"Twitcher/stream"
 	"Twitcher/twitchApi"
-	"net"
-
 	"bufio"
+	"database/sql"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
-	"log"
 	"mime"
-	"net/http"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"database/sql"
+	"flag"
+	"log"
+	"net/http"
 
-	"github.com/gocolly/colly/v2"
+	"github.com/gocolly/colly"
 	_ "github.com/mattn/go-sqlite3"
 	"google.golang.org/grpc"
 )
@@ -50,8 +48,6 @@ type AudioProbe struct {
 }
 
 func main() {
-
-	twitchPtr := flag.String("twitch", "", "a string")
 
 	flag.Parse()
 
@@ -88,10 +84,6 @@ func main() {
 			if err := http.ListenAndServe(":9001", nil); err != nil {
 				log.Fatal("ListenAndServe: ", err)
 			}
-		}()
-
-		go func() {
-			stream.Preview(true)
 		}()
 
 		lis, err := net.Listen("tcp", ":9000")
@@ -140,14 +132,6 @@ func main() {
 		if err != nil {
 			log.Println(err)
 			panic(err)
-		}
-	}
-
-	// Twitch stream
-	if *twitchPtr != "" {
-		err := stream.Twitch(*twitchPtr)
-		if err != nil {
-			log.Fatalln(err)
 		}
 	}
 
@@ -453,7 +437,7 @@ func downloadFile(url, saveDir string) (string, error) {
 func audioData(file string) (AudioProbe, error) {
 	var audioData AudioProbe
 
-	// Get sampel rate.
+	// Get sample rate.
 	cmd := exec.Command("ffprobe", "-hide_banner", "-select_streams", "a", "-show_streams", file)
 
 	stdOut, _ := cmd.StdoutPipe()
