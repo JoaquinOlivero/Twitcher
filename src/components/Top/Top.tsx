@@ -4,6 +4,7 @@ import Preview from "../Preview/Preview";
 import Controls from "../Controls/Controls";
 import { useRef, useState } from "react";
 import { StatusResponse__Output } from "@/pb/service/StatusResponse";
+import Settings from "./Settings/Settings";
 
 type Props = {
     status: StatusResponse__Output | undefined
@@ -15,6 +16,7 @@ const Top = ({ status }: Props) => {
     const [volume, setVolume] = useState<number>(10)
     const [prevVolume, setPrevVolume] = useState<number>(10)
     const [isLoaded, setIsLoaded] = useState<boolean>(false)
+    const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
 
     const addVideoElement = (event: RTCTrackEvent) => {
         if (event.track.kind === "video" && vRef.current) {
@@ -81,26 +83,69 @@ const Top = ({ status }: Props) => {
 
     return (
         <>
-            <div className='w-1/4'>
 
+            <div className="w-[99%] flex mx-auto">
+                <Settings />
+                <Preview
+                    status={status}
+                    addVideoElement={addVideoElement}
+                    handleSoundMuting={handleSoundMuting}
+                    handleVolume={handleVolume}
+                    muted={muted}
+                    isLoaded={isLoaded}
+                    volume={volume}
+                    ref={vRef}
+                />
+                <Controls
+                    status={status}
+                    addVideoElement={addVideoElement}
+                    removeVideoElement={removeVideoElement}
+                />
             </div>
-            <Preview
-                status={status}
-                addVideoElement={addVideoElement}
-                handleSoundMuting={handleSoundMuting}
-                handleVolume={handleVolume}
-                muted={muted}
-                isLoaded={isLoaded}
-                volume={volume}
-                ref={vRef}
-            />
-            <Controls
-                status={status}
-                addVideoElement={addVideoElement}
-                removeVideoElement={removeVideoElement}
-            />
         </>
     )
 }
 
 export default Top
+
+// type SettingsButtonProps = {
+//     text: string
+// }
+
+// const SettingsButton = ({ text }: SettingsButtonProps) => {
+
+//     return (
+//         <div className="py-1 my-1 transition text-sm capitalize font-semibold tracking-wider opacity-80 hover:bg-background hover:opacity-100 cursor-pointer">
+//             <span className="ml-2">{text}</span>
+//         </div>
+//     )
+// }
+
+// type ModalProps = {
+//     tWidth: string
+//     tHeight: string
+//     isOpen: boolean
+//     setIsOpen: React.Dispatch<React.SetStateAction<boolean>>
+// }
+
+// const Modal = ({ tWidth, tHeight, isOpen, setIsOpen }: ModalProps) => {
+
+//     return (
+//         <>
+//             {isOpen &&
+
+//                 <div className="absolute left-0 top-0 w-full h-full z-20 flex justify-center items-center">
+
+//                     {/* Transparent background */}
+//                     <div className="absolute w-full h-full opacity-50 bg-black" onClick={() => setIsOpen(false)}></div>
+
+//                     {/* Content */}
+//                     <div className={`absolute bg-foreground z-30 rounded-lg ${tWidth} ${tHeight}`}>
+
+//                     </div>
+
+//                 </div>
+//             }
+//         </>
+//     )
+// }

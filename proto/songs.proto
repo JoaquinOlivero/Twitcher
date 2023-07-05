@@ -19,6 +19,8 @@ service StreamManagement {
     rpc StartOutput (OutputRequest) returns (OutputResponse) {};
     rpc StopOutput (Empty) returns (Empty) {};
     rpc Status (Empty) returns (StatusResponse) {};
+
+    rpc FindNewSongsNCS (Empty) returns (Empty) {};
 }
 
 message Song {
