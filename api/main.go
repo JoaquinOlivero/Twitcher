@@ -3,10 +3,13 @@ package main
 import (
 	"Twitcher/pb"
 	service "Twitcher/services"
+	"database/sql"
 	"errors"
+	"fmt"
+	"io/fs"
 	"net"
+	"os"
 
-	"flag"
 	"log"
 	"net/http"
 
@@ -16,75 +19,124 @@ import (
 
 func main() {
 
-	flag.Parse()
-
-	if len(flag.Args()) > 1 {
-		err := errors.New("can't use more than one argument")
+	// check database.
+	err := checkDatabase()
+	if err != nil {
 		log.Fatalln(err)
 	}
 
-	if flag.Arg(0) == "gui" {
+	// serve static files
+	go func() {
+		http.Handle("/covers/", http.StripPrefix("/covers/", http.FileServer(http.Dir("files/covers"))))
+		http.Handle("/preview/", http.StripPrefix("/preview/", http.FileServer(http.Dir("files/stream/preview"))))
 
-		// serve static files
-		go func() {
-			http.Handle("/covers/", http.StripPrefix("/covers/", http.FileServer(http.Dir("files/covers"))))
-			http.Handle("/preview/", http.StripPrefix("/preview/", http.FileServer(http.Dir("files/stream/preview"))))
-
-			log.Println("Static file server listening at :9001")
-			if err := http.ListenAndServe(":9001", nil); err != nil {
-				log.Fatal("ListenAndServe: ", err)
-			}
-		}()
-
-		lis, err := net.Listen("tcp", ":9000")
-		if err != nil {
-			log.Fatalf("Failed to listen on port 9000: %v", err)
+		log.Println("Static file server listening at :9001")
+		if err := http.ListenAndServe(":9001", nil); err != nil {
+			log.Fatal("ListenAndServe: ", err)
 		}
+	}()
 
-		grpcServer := grpc.NewServer()
-
-		// Register service methods
-		pb.RegisterMainServer(grpcServer, &service.MainServer{})
-
-		log.Printf("gRPC server listening at %v", lis.Addr())
-		if err := grpcServer.Serve(lis); err != nil {
-			log.Fatalf("Failed to serve on port 9000: %v", err)
-		}
+	lis, err := net.Listen("tcp", ":9000")
+	if err != nil {
+		log.Fatalf("Failed to listen on port 9000: %v", err)
 	}
 
-	// Save client id and client secret to database. Ask user for input.
-	// if flag.Arg(0) == "api" {
-	// // client id
-	// // nmt0hburg9hhvc7txcv3qlofl8lp01
-	// // client secret
-	// // zpl1ancbp3qbsq43g7jj9cix1zj6iz
+	grpcServer := grpc.NewServer()
 
-	// // https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=nmt0hburg9hhvc7txcv3qlofl8lp01&redirect_uri=http://localhost:3000/twitch&scope=moderator%3Aread%3Afollowers+channel%3Aread%3Asubscriptions+user%3Aread%3Aemail
+	// Register service methods
+	pb.RegisterMainServer(grpcServer, &service.MainServer{})
 
-	// scanner := bufio.NewScanner(os.Stdin)
+	log.Printf("gRPC server listening at %v", lis.Addr())
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("Failed to serve on port 9000: %v", err)
+	}
 
-	// // Get client id from user input.
-	// fmt.Print("Enter your client id: ")
-	// scanner.Scan()
-	// clientId := scanner.Text()
+}
 
-	// // Get secret from user input.
-	// fmt.Print("Enter your secret: ")
-	// scanner.Scan()
-	// secret := scanner.Text()
+func checkDatabase() error {
+	log.Println("Checking database")
 
-	// fmt.Println("Go to: https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=" + clientId + "&redirect_uri=http://localhost:3000/twitch&scope=moderator%3Aread%3Afollowers+channel%3Aread%3Asubscriptions+user%3Aread%3Aemail")
+	// Check if database already exists.
+	file, err := os.OpenFile("data.db", os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		defer file.Close()
 
-	// // Get code from user input.
-	// fmt.Printf("Enter your code: ")
-	// scanner.Scan()
-	// code := scanner.Text()
+		if errors.Is(err, fs.ErrExist) {
+			log.Println("data.db file already exists. Skipping creation.")
+			return nil
+		}
 
-	// err := twitchApi.SaveClient(clientId, secret, code)
-	// if err != nil {
-	// 	log.Println(err)
-	// 	panic(err)
-	// }
-	// }
+		return err
+	}
 
+	file.Close()
+
+	// Create tables
+	db, err := sql.Open("sqlite3", "data.db")
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	defer db.Close()
+
+	_, err = db.Exec(`
+		CREATE TABLE songs (
+			page VARCHAR NOT NULL PRIMARY KEY,
+			name VARCHAR(255) NOT NULL,
+			genre VARCHAR(255) NOT NULL,
+			author VARCHAR(255) NOT NULL,
+			release_date VARCHAR(255) NOT NULL,
+			audio_filename VARCHAR(255) NOT NULL,
+			cover_filename VARCHAR(255) NOT NULL,
+			bitrate INT NOT NULL,
+			UNIQUE(page)
+		)
+	`)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		CREATE TABLE moods (
+			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+			ncsid INTEGER NOT NULL,
+			name VARCHAR(255) NOT NULL,
+			UNIQUE(name),
+			UNIQUE(ncsid)
+		)
+	`)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		CREATE TABLE users (
+			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+			twitch_user_id VARCHAR(255),
+			twitch_user_name VARCHAR(255),
+			client_id VARCHAR(255),
+			secret VARCHAR(255),
+			access_token VARCHAR(255),
+			refresh_token VARCHAR(255),
+			stream_key VARCHAR(255)
+		)
+	`)
+
+	if err != nil {
+		return err
+	}
+
+	// Insert default user data.
+	_, err = db.Exec(`
+		INSERT INTO users (id) VALUES (1)
+	`)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
