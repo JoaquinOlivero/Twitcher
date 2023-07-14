@@ -7,8 +7,8 @@ type ModalProps = {
     tHeight: string
     isOpen: boolean
     setIsOpen: React.Dispatch<React.SetStateAction<boolean>>
-    goBack: () => void
-    isSubPage: boolean
+    goBack?: () => void
+    isSubPage?: boolean
 }
 
 const Modal = ({ children, tWidth, tHeight, isOpen, setIsOpen, goBack, isSubPage }: ModalProps) => {
@@ -19,7 +19,7 @@ const Modal = ({ children, tWidth, tHeight, isOpen, setIsOpen, goBack, isSubPage
             modalRef.current.classList.add("opacity-0")
             await sleep(150)
             setIsOpen(false)
-            goBack()
+            if (goBack) goBack()
         }
     }
 
@@ -53,7 +53,7 @@ const Modal = ({ children, tWidth, tHeight, isOpen, setIsOpen, goBack, isSubPage
 
                             {/* Top bar. Go back and close modal */}
                             <div className="flex w-full justify-between">
-                                {isSubPage ?
+                                {isSubPage && goBack ?
                                     <span onClick={() => goBack()} className="cursor-pointer">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15m0 0l6.75 6.75M4.5 12l6.75-6.75" />

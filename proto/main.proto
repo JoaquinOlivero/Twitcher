@@ -1,0 +1,87 @@
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+package service;
+
+option go_package = "./pb";
+
+service Main {
+    rpc CreateSongPlaylist (google.protobuf.Empty) returns (SongPlaylist) {};
+    rpc CurrentSongPlaylist (google.protobuf.Empty) returns (SongPlaylist) {};
+    rpc UpdateSongPlaylist (SongPlaylist) returns (google.protobuf.Empty) {};
+    
+    
+    rpc Preview (SDP) returns (SDP) {};
+    rpc StartStream (google.protobuf.Empty) returns (google.protobuf.Empty) {};
+    rpc StopStream (google.protobuf.Empty) returns (google.protobuf.Empty) {};
+
+    rpc StartAudio (google.protobuf.Empty) returns (AudioResponse) {};
+
+    rpc StartOutput (OutputRequest) returns (OutputResponse) {};
+    rpc StopOutput (google.protobuf.Empty) returns (google.protobuf.Empty) {};
+    rpc Status (google.protobuf.Empty) returns (StatusResponse) {};
+
+    rpc FindNewSongsNCS (google.protobuf.Empty) returns (google.protobuf.Empty) {};
+    rpc StatusNCS (google.protobuf.Empty) returns (StatusNCSResponse) {};
+
+    rpc TwitchSaveStreamKey (TwitchStreamKey) returns (google.protobuf.Empty) {};
+    rpc CheckTwitchStreamKey (google.protobuf.Empty) returns (TwitchStreamKey) {};
+    rpc DeleteTwitchStreamKey (google.protobuf.Empty) returns (google.protobuf.Empty) {};
+    rpc SaveTwitchDevCredentials (DevCredentials) returns (google.protobuf.Empty) {};
+    rpc CheckTwitchDevCredentials (google.protobuf.Empty) returns (DevCredentials) {};
+    rpc DeleteTwitchDevCredentials (google.protobuf.Empty) returns (google.protobuf.Empty) {};
+    rpc TwitchAccessToken (UserAuth) returns (google.protobuf.Empty) {};
+}
+
+message Song {
+    string name = 1;
+    string page = 2;
+    string author = 3;
+    string audio = 4;
+    string cover = 5;
+    int32 bitrate = 6;
+}
+
+message SongPlaylist {
+    repeated Song songs = 1;
+}
+
+message AudioResponse {
+    bool ready = 1;
+}
+
+message OutputRequest {
+    string mode = 1;
+}
+
+message OutputResponse {
+    bool ready = 1;
+}
+
+message StatusResponse {
+    bool output = 1;
+    bool audio = 2;
+    bool stream = 3;
+}
+
+message SDP {
+    string sdp = 1;
+}
+
+message StatusNCSResponse {
+    bool active = 1;
+}
+
+message TwitchStreamKey {
+    string key = 1;
+    bool active = 2;
+}
+
+message DevCredentials {
+    string clientId = 1;
+    string secret = 2;
+    bool active = 3;
+}
+
+message UserAuth {
+    string code = 1;
+}

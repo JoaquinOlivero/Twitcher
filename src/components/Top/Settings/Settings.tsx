@@ -1,8 +1,14 @@
-import React from 'react'
+import { DevCredentials__Output } from '@/pb/service/DevCredentials'
 import AddSongs from './AddSongs/AddSongs'
-import AuthTwitch from './AuthTwitch/AuthTwitch'
+import TwitchSettings from './TwitchSettings/TwitchSettings'
+import { TwitchStreamKey__Output } from '@/pb/service/TwitchStreamKey'
 
-const Settings = () => {
+type Props = {
+    statusStreamKey: TwitchStreamKey__Output | undefined
+    twitchCredentials: DevCredentials__Output | undefined
+}
+
+const Settings = ({ statusStreamKey, twitchCredentials }: Props) => {
     return (
         <>
             <div className='w-1/4 flex flex-col items-start'>
@@ -15,7 +21,7 @@ const Settings = () => {
                         <div className="w-[98%] h-1 mx-auto my-1 bg-background"></div>
 
                         <AddSongs />
-                        <AuthTwitch />
+                        <TwitchSettings statusStreamKey={statusStreamKey} twitchCredentials={twitchCredentials} />
                     </div>
                 </div>
             </div>

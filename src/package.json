@@ -9,22 +9,22 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@types/node": "20.2.1",
-    "@types/react": "18.2.6",
-    "@types/react-dom": "18.2.4",
+    "@types/node": "20.3.3",
+    "@types/react": "18.2.14",
+    "@types/react-dom": "18.2.6",
     "autoprefixer": "10.4.14",
-    "eslint": "8.41.0",
-    "eslint-config-next": "13.4.3",
-    "next": "13.4.3",
-    "postcss": "8.4.23",
+    "eslint": "8.44.0",
+    "eslint-config-next": "13.4.8",
+    "next": "13.4.8",
+    "postcss": "8.4.24",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-player": "^2.12.0",
     "tailwindcss": "3.3.2",
-    "typescript": "5.0.4"
+    "typescript": "5.1.6"
   },
   "devDependencies": {
-    "@grpc/grpc-js": "^1.8.14",
+    "@grpc/grpc-js": "^1.8.17",
     "@grpc/proto-loader": "^0.7.7",
     "@types/google-protobuf": "^3.15.6",
     "grpc_tools_node_protoc_ts": "^5.3.3"

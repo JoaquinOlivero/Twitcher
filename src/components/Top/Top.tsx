@@ -5,12 +5,16 @@ import Controls from "../Controls/Controls";
 import { useRef, useState } from "react";
 import { StatusResponse__Output } from "@/pb/service/StatusResponse";
 import Settings from "./Settings/Settings";
+import { TwitchStreamKey__Output } from "@/pb/service/TwitchStreamKey";
+import { DevCredentials__Output } from "@/pb/service/DevCredentials";
 
 type Props = {
     status: StatusResponse__Output | undefined
+    statusStreamKey: TwitchStreamKey__Output | undefined
+    twitchCredentials: DevCredentials__Output | undefined
 }
 
-const Top = ({ status }: Props) => {
+const Top = ({ status, statusStreamKey, twitchCredentials }: Props) => {
     const vRef = useRef<HTMLDivElement>(null)
     const [muted, setMuted] = useState<boolean>(false)
     const [volume, setVolume] = useState<number>(10)
@@ -85,7 +89,7 @@ const Top = ({ status }: Props) => {
         <>
 
             <div className="w-[99%] flex mx-auto">
-                <Settings />
+                <Settings statusStreamKey={statusStreamKey} twitchCredentials={twitchCredentials} />
                 <Preview
                     status={status}
                     addVideoElement={addVideoElement}
@@ -107,45 +111,3 @@ const Top = ({ status }: Props) => {
 }
 
 export default Top
-
-// type SettingsButtonProps = {
-//     text: string
-// }
-
-// const SettingsButton = ({ text }: SettingsButtonProps) => {
-
-//     return (
-//         <div className="py-1 my-1 transition text-sm capitalize font-semibold tracking-wider opacity-80 hover:bg-background hover:opacity-100 cursor-pointer">
-//             <span className="ml-2">{text}</span>
-//         </div>
-//     )
-// }
-
-// type ModalProps = {
-//     tWidth: string
-//     tHeight: string
-//     isOpen: boolean
-//     setIsOpen: React.Dispatch<React.SetStateAction<boolean>>
-// }
-
-// const Modal = ({ tWidth, tHeight, isOpen, setIsOpen }: ModalProps) => {
-
-//     return (
-//         <>
-//             {isOpen &&
-
-//                 <div className="absolute left-0 top-0 w-full h-full z-20 flex justify-center items-center">
-
-//                     {/* Transparent background */}
-//                     <div className="absolute w-full h-full opacity-50 bg-black" onClick={() => setIsOpen(false)}></div>
-
-//                     {/* Content */}
-//                     <div className={`absolute bg-foreground z-30 rounded-lg ${tWidth} ${tHeight}`}>
-
-//                     </div>
-
-//                 </div>
-//             }
-//         </>
-//     )
-// }

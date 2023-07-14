@@ -56,7 +56,6 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
 
             pc.createOffer().then(d => pc.setLocalDescription(d)).catch(err => console.log(err))
         }
-
     }
 
     useEffect(() => {

@@ -16,9 +16,13 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gocolly/colly"
+	google_protobuf "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type SongDetails struct {
@@ -43,7 +47,18 @@ type AudioProbe struct {
 	SampleRate int
 }
 
-func (s *StreamManagementServer) FindNewSongsNCS(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
+func (s *MainServer) FindNewSongsNCS(ctx context.Context, in *google_protobuf.Empty) (*google_protobuf.Empty, error) {
+
+	if s.findingOn {
+		return nil, status.Errorf(
+			codes.FailedPrecondition,
+			fmt.Sprintln("Finding new songs. Please wait..."),
+		)
+	}
+
+	s.mu.Lock()
+	s.findingOn = true
+	s.mu.Unlock()
 
 	var songs []SongDetails
 
@@ -58,17 +73,16 @@ func (s *StreamManagementServer) FindNewSongsNCS(ctx context.Context, in *pb.Emp
 			fmt.Println(err)
 		}
 
-		for _, song := range moodSongs {
-			songs = append(songs, song)
-		}
+		songs = append(songs, moodSongs...)
 	}
 
 	maxDownloads := 4
 	guard := make(chan struct{}, maxDownloads)
+	var wg sync.WaitGroup
 
 	for _, song := range songs {
 		guard <- struct{}{}
-
+		wg.Add(1)
 		go func(song SongDetails) {
 
 			c := colly.NewCollector(
@@ -85,15 +99,28 @@ func (s *StreamManagementServer) FindNewSongsNCS(ctx context.Context, in *pb.Emp
 			if song.CoverSrc != "" && song.DownloadLink != "" {
 				saveSong(song)
 			} else {
-				fmt.Println(song)
+				fmt.Println("Skipping: ", song.Name)
 			}
 
 			<-guard
+			wg.Done()
 
 		}(song)
 	}
 
-	return &pb.Empty{}, nil
+	// wait for all songs to be processed.
+	wg.Wait()
+
+	s.mu.Lock()
+	s.findingOn = false
+	s.mu.Unlock()
+
+	log.Println("Finished finding new songs")
+	return &google_protobuf.Empty{}, nil
+}
+
+func (s *MainServer) StatusNCS(ctx context.Context, in *google_protobuf.Empty) (*pb.StatusNCSResponse, error) {
+	return &pb.StatusNCSResponse{Active: s.findingOn}, nil
 }
 
 func getMoods() ([]Mood, error) {
@@ -183,17 +210,7 @@ func crawlByMood(moodId int) ([]SongDetails, error) {
 
 			song.ReleaseDate = childNodes[5].FirstChild.Data
 
-			// Crawl for the download link on ncs.io
-			// downloadLink := getSongURL(song.Page, c)
-			// song.DownloadLink = downloadLink
-
-			// Crawl for cover image on ncs.lnk.to
-			// coverSrc := getCoverURL(song.AltPage, c)
-			// song.CoverSrc = coverSrc
-
-			// if song.CoverSrc != "" && song.DownloadLink != "" {
 			songs = append(songs, song)
-			// }
 		}
 	})
 
@@ -356,6 +373,8 @@ func downloadSong(url, name, author string, bitrate, sampleRate int) (string, er
 		return "", err
 	}
 
+	log.Println("Downloaded: ", filename)
+
 	return filename, nil
 }
 
@@ -397,14 +416,14 @@ func downloadFile(url, saveDir string) (string, error) {
 	}
 	defer out.Close()
 
-	fmt.Println("Downloading: " + filename)
+	log.Println("Downloading: " + filename)
 	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
 		return "", err
 	}
 
-	fmt.Println("Downloaded: " + filename)
+	log.Println("Downloaded: " + filename)
 
 	return filename, nil
 }

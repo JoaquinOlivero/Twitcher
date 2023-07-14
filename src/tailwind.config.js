@@ -6,8 +6,9 @@ module.exports = {
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
-    fontFamily :{
-      'sans': ['Open Sans', 'ui-sans-serif', 'system-ui']
+    fontFamily: {
+      'sans': ['Open Sans', 'ui-sans-serif', 'system-ui'],
+      'dots': ['dotsfont']
     },
     extend: {
       colors: {

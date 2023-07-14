@@ -1,5 +1,8 @@
 import Modal from "@/components/Modal/Modal"
 import { useState } from "react"
+import NCS from "./NCS"
+import SoundCloud from "./Soundcloud"
+import UploadFile from "./UploadFile"
 
 const AddSongs = () => {
     const [tWidth, setTWidth] = useState<string>("w-1/3")
@@ -83,26 +86,3 @@ const AddSongs = () => {
 }
 
 export default AddSongs
-
-
-
-const NCS = () => {
-
-    return (
-        <div>ncs</div>
-    )
-}
-
-const SoundCloud = () => {
-
-    return (
-        <div>SoundCloud</div>
-    )
-}
-
-const UploadFile = () => {
-
-    return (
-        <div>UploadFile</div>
-    )
-}

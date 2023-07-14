@@ -13,7 +13,7 @@ const Playlist = ({ serverPlaylist }: Props) => {
     return (
         <div className="bg-foreground shadow-lg w-1/2 h-[95%] rounded-t-xl font-sans overflow-hidden">
             <div className="text-[#fff] w-full my-1 relative">
-                <div className="text-center opacity-80 text-xl font-semibold uppercase tracking-wider">
+                <div className="text-center opacity-85 text-xl font-semibold uppercase tracking-wider">
                     Playlist
                 </div>
             </div>

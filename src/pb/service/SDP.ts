@@ -1,4 +1,4 @@
-// Original file: ../proto/songs.proto
+// Original file: ../proto/main.proto
 
 
 export interface SDP {

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/golang/freetype/truetype"
+	google_protobuf "github.com/golang/protobuf/ptypes/empty"
 	"github.com/google/renameio"
 	"github.com/nfnt/resize"
 	"golang.org/x/image/font"
@@ -39,13 +40,14 @@ type Song struct {
 	Bitrate       int
 }
 
-type StreamManagementServer struct {
-	pb.UnimplementedStreamManagementServer
-	playlist pb.SongPlaylist
-	mu       sync.Mutex
-	audioOn  bool
-	outputOn bool
-	streamOn bool
+type MainServer struct {
+	pb.UnimplementedMainServer
+	playlist  pb.SongPlaylist
+	mu        sync.Mutex
+	audioOn   bool
+	outputOn  bool
+	streamOn  bool
+	findingOn bool
 }
 
 var (
@@ -63,7 +65,7 @@ var (
 	sr, sw = io.Pipe()
 )
 
-func (s *StreamManagementServer) StartAudio(ctx context.Context, in *pb.Empty) (*pb.AudioResponse, error) {
+func (s *MainServer) StartAudio(ctx context.Context, in *google_protobuf.Empty) (*pb.AudioResponse, error) {
 	if s.audioOn {
 		return nil, status.Errorf(
 			codes.FailedPrecondition,
@@ -89,7 +91,7 @@ func (s *StreamManagementServer) StartAudio(ctx context.Context, in *pb.Empty) (
 	return &pb.AudioResponse{Ready: true}, nil
 }
 
-func (s *StreamManagementServer) Audio(wg *sync.WaitGroup) error {
+func (s *MainServer) Audio(wg *sync.WaitGroup) error {
 	if s.audioOn {
 		return status.Errorf(
 			codes.FailedPrecondition,
@@ -140,7 +142,7 @@ func (s *StreamManagementServer) Audio(wg *sync.WaitGroup) error {
 
 			// Generate new playlist when there are ten songs left and let the client know using webRTC data channel.
 			if len(s.playlist.Songs) == 10 {
-				_, err := s.generateRandomPlaylist() // this functions appends new songs to the playlist method in the StreamManagementServer struct.
+				_, err := s.generateRandomPlaylist() // this functions appends new songs to the playlist method in the MainServer struct.
 				if err != nil {
 					log.Println(err)
 				}
@@ -213,7 +215,7 @@ func (s *StreamManagementServer) Audio(wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (s *StreamManagementServer) StartOutput(ctx context.Context, in *pb.OutputRequest) (*pb.OutputResponse, error) {
+func (s *MainServer) StartOutput(ctx context.Context, in *pb.OutputRequest) (*pb.OutputResponse, error) {
 	if !s.audioOn {
 		return nil, status.Errorf(
 			codes.FailedPrecondition,
@@ -239,7 +241,7 @@ func (s *StreamManagementServer) StartOutput(ctx context.Context, in *pb.OutputR
 	return &pb.OutputResponse{Ready: true}, nil
 }
 
-func (s *StreamManagementServer) Output(wg *sync.WaitGroup, mode string) error {
+func (s *MainServer) Output(wg *sync.WaitGroup, mode string) error {
 	if !s.audioOn {
 		return status.Errorf(
 			codes.FailedPrecondition,
@@ -371,18 +373,18 @@ func (s *StreamManagementServer) Output(wg *sync.WaitGroup, mode string) error {
 	return nil
 }
 
-func (s *StreamManagementServer) Status(ctx context.Context, in *pb.Empty) (*pb.StatusResponse, error) {
+func (s *MainServer) Status(ctx context.Context, in *google_protobuf.Empty) (*pb.StatusResponse, error) {
 	return &pb.StatusResponse{Audio: s.audioOn, Output: s.outputOn, Stream: s.streamOn}, nil
 }
 
-func (s *StreamManagementServer) StopOutput(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
+func (s *MainServer) StopOutput(ctx context.Context, in *google_protobuf.Empty) (*google_protobuf.Empty, error) {
 	stopOutputChan <- struct{}{}
 	stopAudioChan <- struct{}{}
 
-	return &pb.Empty{}, nil
+	return &google_protobuf.Empty{}, nil
 }
 
-func (s *StreamManagementServer) Preview(ctx context.Context, in *pb.SDP) (*pb.SDP, error) {
+func (s *MainServer) Preview(ctx context.Context, in *pb.SDP) (*pb.SDP, error) {
 
 	if !s.audioOn || !s.outputOn {
 		return nil, status.Errorf(
@@ -398,9 +400,9 @@ func (s *StreamManagementServer) Preview(ctx context.Context, in *pb.SDP) (*pb.S
 	return &pb.SDP{Sdp: sdpForClient}, nil
 }
 
-func (s *StreamManagementServer) StartStream(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
+func (s *MainServer) StartStream(ctx context.Context, in *google_protobuf.Empty) (*google_protobuf.Empty, error) {
 	if s.streamOn {
-		return &pb.Empty{}, status.Errorf(
+		return &google_protobuf.Empty{}, status.Errorf(
 			codes.FailedPrecondition,
 			fmt.Sprintln("stream has already started."),
 		)
@@ -475,15 +477,15 @@ func (s *StreamManagementServer) StartStream(ctx context.Context, in *pb.Empty) 
 
 	cmd.Wait()
 
-	return &pb.Empty{}, nil
+	return &google_protobuf.Empty{}, nil
 }
 
-func (s *StreamManagementServer) StopStream(ctx context.Context, in *pb.Empty) (*pb.Empty, error) {
+func (s *MainServer) StopStream(ctx context.Context, in *google_protobuf.Empty) (*google_protobuf.Empty, error) {
 	streamStopChan <- struct{}{}
-	return &pb.Empty{}, nil
+	return &google_protobuf.Empty{}, nil
 }
 
-func (s *StreamManagementServer) CreateSongPlaylist(ctx context.Context, in *pb.Empty) (*pb.SongPlaylist, error) {
+func (s *MainServer) CreateSongPlaylist(ctx context.Context, in *google_protobuf.Empty) (*pb.SongPlaylist, error) {
 
 	playlist, err := s.generateRandomPlaylist()
 	if err != nil {
@@ -493,11 +495,11 @@ func (s *StreamManagementServer) CreateSongPlaylist(ctx context.Context, in *pb.
 	return playlist, nil
 }
 
-func (s *StreamManagementServer) CurrentSongPlaylist(ctx context.Context, in *pb.Empty) (*pb.SongPlaylist, error) {
+func (s *MainServer) CurrentSongPlaylist(ctx context.Context, in *google_protobuf.Empty) (*pb.SongPlaylist, error) {
 	return &s.playlist, nil
 }
 
-func (s *StreamManagementServer) UpdateSongPlaylist(ctx context.Context, in *pb.SongPlaylist) (*pb.Empty, error) {
+func (s *MainServer) UpdateSongPlaylist(ctx context.Context, in *pb.SongPlaylist) (*google_protobuf.Empty, error) {
 
 	s.mu.Lock()
 
@@ -506,11 +508,11 @@ func (s *StreamManagementServer) UpdateSongPlaylist(ctx context.Context, in *pb.
 
 	s.mu.Unlock()
 
-	return &pb.Empty{}, nil
+	return &google_protobuf.Empty{}, nil
 }
 
 // This function is required in CreateSongPlaylist() and Audio()
-func (s *StreamManagementServer) generateRandomPlaylist() (*pb.SongPlaylist, error) {
+func (s *MainServer) generateRandomPlaylist() (*pb.SongPlaylist, error) {
 
 	// Connect to db.
 	db, err := sql.Open("sqlite3", "data.db")
@@ -630,7 +632,7 @@ func changeCover(name, author, page, cover string) error {
 		return err
 	}
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(8 * time.Second)
 
 	overlay, err := os.ReadFile("files/stream/next.png")
 	if err != nil {

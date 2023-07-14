@@ -94,33 +94,35 @@ const Controls = ({ status, addVideoElement, removeVideoElement }: Props) => {
         <div className='w-1/4 flex flex-col items-end'>
             <div className='w-[95%] h-full bg-foreground rounded-b-xl flex justify-center items-center'>
 
-                <div className="w-[98%] h-[95%]">
-                    {!oStatus || !oStatus.stream ?
-                        <button onClick={() => handleStartStream()} className="text-white">
-                            Start Stream
-                        </button>
-                        :
-                        <button onClick={() => handleStopStream()} className="text-white">
-                            Stop Stream
-                        </button>
-                    }
+                <div className="w-[98%] h-[98%]">
+                    {oStatus &&
+                        <div className="flex gap-2">
+                            <button className={"bg-green-500 w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition hover:bg-green-400 " + (oStatus.stream || oStatus.output ? "opacity-60 pointer-events-none" : "")} disabled={oStatus.stream || oStatus.output} onClick={() => handleStartStream()}>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" strokeWidth={1.5} stroke="white" className="w-5 h-5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                                </svg>
+                            </button>
+                            <button className={"bg-red-500 w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition hover:bg-red-400 " + (!oStatus.stream ? "opacity-60 pointer-events-none" : "")} disabled={!oStatus.stream} onClick={() => handleStopStream()}>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" strokeWidth={1.5} stroke="white" className="w-5 h-5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z" />
+                                </svg>
+                            </button>
 
-                    {!oStatus || !oStatus.stream &&
-                        <>
-                            {!oStatus || !oStatus.output ?
-                                <button onClick={() => handleStartPreview()} className="relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-cyan-500 to-blue-500 group-hover:from-cyan-500 group-hover:to-blue-500 hover:text-white dark:text-white">
-                                    <span className="relative px-2.5 py-1.5 transition-all ease-in duration-75 bg-white dark:bg-foreground rounded-md group-hover:bg-opacity-0">
-                                        Start Preview
-                                    </span>
-                                </button>
-                                :
-                                <button onClick={() => handleStopPreview()} className="relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-pink-500 to-orange-400 group-hover:from-pink-500 group-hover:to-orange-400 hover:text-white dark:text-white">
-                                    <span className="relative px-2.5 py-1.5 transition-all ease-in duration-75 bg-white dark:bg-foreground rounded-md group-hover:bg-opacity-0">
-                                        Stop Preview
-                                    </span>
-                                </button>
+
+                            {!oStatus.stream &&
+                                <>
+                                    {!oStatus.output ?
+                                        <button className="text-white text-sm font-semibold border-2 rounded-md px-3.5 py-0.5 transition hover:border-lime-500 hover:bg-lime-500" onClick={() => handleStartPreview()}>
+                                            Start Preview
+                                        </button>
+                                        :
+                                        <button className="text-white text-sm font-semibold border-2 rounded-md px-3.5 py-0.5 transition hover:border-rose-500 hover:bg-rose-500" onClick={() => handleStopPreview()}>
+                                            Stop Preview
+                                        </button>
+                                    }
+                                </>
                             }
-                        </>
+                        </div>
                     }
                 </div>
 

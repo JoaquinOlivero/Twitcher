@@ -1,4 +1,4 @@
-// Original file: ../proto/songs.proto
+// Original file: ../proto/main.proto
 
 import type { Song as _service_Song, Song__Output as _service_Song__Output } from '../service/Song';
 

@@ -1,23 +1,31 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { MessageTypeDefinition } from '@grpc/proto-loader';
 
-import type { StreamManagementClient as _service_StreamManagementClient, StreamManagementDefinition as _service_StreamManagementDefinition } from './service/StreamManagement';
+import type { MainClient as _service_MainClient, MainDefinition as _service_MainDefinition } from './service/Main';
 
 type SubtypeConstructor<Constructor extends new (...args: any) => any, Subtype> = {
   new(...args: ConstructorParameters<Constructor>): Subtype;
 };
 
 export interface ProtoGrpcType {
+  google: {
+    protobuf: {
+      Empty: MessageTypeDefinition
+    }
+  }
   service: {
     AudioResponse: MessageTypeDefinition
-    Empty: MessageTypeDefinition
+    DevCredentials: MessageTypeDefinition
+    Main: SubtypeConstructor<typeof grpc.Client, _service_MainClient> & { service: _service_MainDefinition }
     OutputRequest: MessageTypeDefinition
     OutputResponse: MessageTypeDefinition
     SDP: MessageTypeDefinition
     Song: MessageTypeDefinition
     SongPlaylist: MessageTypeDefinition
+    StatusNCSResponse: MessageTypeDefinition
     StatusResponse: MessageTypeDefinition
-    StreamManagement: SubtypeConstructor<typeof grpc.Client, _service_StreamManagementClient> & { service: _service_StreamManagementDefinition }
+    TwitchStreamKey: MessageTypeDefinition
+    UserAuth: MessageTypeDefinition
   }
 }
 
