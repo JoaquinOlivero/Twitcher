@@ -13,6 +13,7 @@ const DevApp = ({ twitchCredentials }: Props) => {
     const [clientId, setClientId] = useState<string>(twitchCredentials && twitchCredentials?.clientId ? twitchCredentials.clientId : "")
     const [secret, setSecret] = useState<string>(twitchCredentials && twitchCredentials?.active ? "000000000000000000000000000000000000000000000000000000" : "")
     const [isActive, setIsActive] = useState<boolean | undefined>(twitchCredentials?.active)
+    const [isWaiting, setIsWaiting] = useState<boolean>(false)
     const [connectError, setConnectError] = useState<string | null>(null)
 
     const handleAuthorizeAccount = async () => {
@@ -20,9 +21,12 @@ const DevApp = ({ twitchCredentials }: Props) => {
             return
         }
 
+        setIsWaiting(true)
+
         const originUrl = new URL(window.location.origin)
         if (originUrl.protocol === "http:" && !originUrl.host.includes("localhost")) {
             setConnectError("http: protocol only allowed in localhost.")
+            setIsWaiting(false)
             return
         }
 
@@ -38,6 +42,8 @@ const DevApp = ({ twitchCredentials }: Props) => {
                 setIsActive(status.active)
             }
         }
+
+        setIsWaiting(false)
     }
 
     const handleRemoveAuth = async () => {
@@ -72,7 +78,8 @@ const DevApp = ({ twitchCredentials }: Props) => {
                     <ActionButton
                         text="Authorize account"
                         width="1/3"
-                        toggle={isActive}
+                        disabled={isActive}
+                        isWaiting={isWaiting}
                         onClick={handleAuthorizeAccount}
                         backgroundColor="bg-purple-800"
                         backgroundColorHover="bg-purple-600"

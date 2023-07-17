@@ -11,11 +11,14 @@ type Props = {
 const StreamKey = ({ statusStreamKey }: Props) => {
     const [streamKey, setStreamKey] = useState<string>(statusStreamKey && statusStreamKey?.active ? "000000000000000000000000000000000000000000000000000000" : "")
     const [isStreamKey, setIsStreamKey] = useState<boolean | undefined>(statusStreamKey?.active)
+    const [isWaiting, setIsWaiting] = useState<boolean>(false)
 
     const handleSaveStreamKey = async () => {
         if (streamKey.length === 0) {
             return
         }
+
+        setIsWaiting(true)
 
         const success = await saveTwitchStreamKey(streamKey)
         if (success) {
@@ -24,6 +27,8 @@ const StreamKey = ({ statusStreamKey }: Props) => {
                 setIsStreamKey(status.active)
             }
         }
+
+        setIsWaiting(false)
     }
 
     const handleDeleteStreamKey = async () => {
@@ -50,8 +55,9 @@ const StreamKey = ({ statusStreamKey }: Props) => {
                 }
                 <ActionButton
                     text="save"
-                    width="1/6"
-                    toggle={isStreamKey}
+                    width="1/5"
+                    disabled={isStreamKey}
+                    isWaiting={isWaiting}
                     onClick={handleSaveStreamKey}
                     backgroundColor="bg-purple-800"
                     backgroundColorHover="bg-purple-600"
