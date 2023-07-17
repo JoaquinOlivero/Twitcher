@@ -1,7 +1,7 @@
 'use client';
 
-import Preview from "../Preview/Preview";
-import Controls from "../Controls/Controls";
+import Preview from "./Preview/Preview";
+import Controls from "./Controls/Controls";
 import { useRef, useState } from "react";
 import { StatusResponse__Output } from "@/pb/service/StatusResponse";
 import Settings from "./Settings/Settings";
@@ -20,7 +20,6 @@ const Top = ({ status, statusStreamKey, twitchCredentials }: Props) => {
     const [volume, setVolume] = useState<number>(10)
     const [prevVolume, setPrevVolume] = useState<number>(10)
     const [isLoaded, setIsLoaded] = useState<boolean>(false)
-    const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
 
     const addVideoElement = (event: RTCTrackEvent) => {
         if (event.track.kind === "video" && vRef.current) {
