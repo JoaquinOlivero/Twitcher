@@ -1,26 +1,32 @@
 # Twitcher
 
-Twitcher is a CLI based 24/7 streaming program. It can play video, sound and overlay layouts on top of the video. It is at a very early stage as it only fits my current needs. However, I have plans to make a front-end web gui to properly manage the stream.
+Twitcher is a 24/7 Twitch broadcasting software with a web GUI. It can play video, sound and overlay layouts on top of the video. It is at a very early stage as it only fits my current needs. However, I have plans to add more features.
 
+## Tech used:
 
-The current features are:
-- Scrape ncs.io to download copyright free music to play in the stream.
-- Randomly create playlists to play during stream with the available songs.
+- I decided to use Go and SQLite for the backend and Next.js (TypeScript) for the frontend. However, I really wanted to learn and experiment with grpc and protocol buffers, which resulted in using Next.js' server side rendering to communicate with the Go backend through grpc using protobufs due to the lack of grpc browser support. On the other hand, web browsers do support webRTC which is used in this case to showcase a live preview of the livestream.
+- FFMPEG is used to handle the video, audio and image overlays for the encoding of the livestream and live preview.
+- The Go backend communicates with Twitch's API to authenticate the user using OAuth 2.0 and to subscribe and then listen to WebSocket events coming from Twitch such as new follows or new subscribers.
+
+## The current features are:
+
+- Web GUI.
+- 24/7 livestream.
+- Live preview of livestream.
+- Start preview without starting a livestream.
+- Scrape ncs.io to download copyright free music to play in the livestream.
+- Automatic creation of a playlist when starting preview or livestream.
+- Automatic additon of songs to the playlist that is about to end.
+- Move songs around in the playlist queue using drag and drop.
 - Overlay that contains the song's name and cover image and the author's name. This overlay changes automatically when a new song plays.
-- OAuth2 implemented to access the Twitch api and receive alerts from Twitch using websockets.
+- OAuth2 implemented to access Twitch api and receive alerts from Twitch that can be displayed on the livestream.
 
+## TODO:
 
-TODO:
+- Change hardcoded things that are suited for my specific needs. Such as the position of the song's overlay and alerts.
 - Implement all Twitch alerts. Right now only alerts for new follows and subs are implemented.
-- Change hardcoded things that are suited for my specific needs. Such as the position of the song's overlay and alerts. 
-- Add YouTube as a stream option.
-- Create a web GUI.
-
-Creating a web gui will require some code re-writing.
-The first thing that needs to be implemented is a simple web gui that would just start and stop the stream, show some information about the stream and then build more features in the gui to have more control over the stream, the music scraper and CRUD related operations.
-
-TODO for when the web gui is ready:
 - Select which moods and genres to scrape from ncs.io.
-- Separately upload external songs or audio files.
-- Add option to create and manipulate audio and video playlists.
-- Preview stream.
+- Separately upload audio files.
+- Add option to add video sources.
+- Add option to create and manipulate audio playlists.
+- Add YouTube as a stream option.
