@@ -1,17 +1,42 @@
 'use client'
 
-import { ReactNode, createContext, useContext, useState } from 'react'
+import { getOverlays } from '@/actions'
+import { Dispatch, ReactNode, SetStateAction, createContext, useContext, useState } from 'react'
+
+type DataChannelMsg = {
+    type: string
+    message: Overlay | {}
+}
+
+type Overlay = {
+    id: string
+    width: number
+    height: number
+    pointX: number
+    pointY: number
+    show: boolean
+    coverId: string
+    text: string
+    fontFamily: string
+    fontSize: number
+    lineHeight: number
+    textColor: string
+}
 
 type PCContextType = {
     pc: RTCPeerConnection | null;
     newPc: () => Promise<RTCPeerConnection | null>;
-    updatePlaylistDataChan: RTCDataChannel | null;
+    Overlays: Overlay[] | null;
+    setOverlays: Dispatch<SetStateAction<Overlay[] | null>>;
+    sendMsg: (msg: string) => void
 }
 
 const PCContextDefaultValue: PCContextType = {
     pc: null,
     newPc: () => Promise.resolve(null),
-    updatePlaylistDataChan: null
+    Overlays: null,
+    setOverlays: () => { },
+    sendMsg: () => { }
 }
 
 export const PCContext = createContext<PCContextType>(PCContextDefaultValue)
@@ -26,11 +51,16 @@ export function usePC() {
 
 export default function PCProvider({ children }: Props) {
     const [pc, setPc] = useState<RTCPeerConnection | null>(null)
-    const [updatePlaylistDataChan, setUpdatePlaylistDataChan] = useState<RTCDataChannel | null>(null)
+    const [Overlays, setOverlays] = useState<Array<Overlay> | null>(null)
+    const [dataChan, setDataChan] = useState<RTCDataChannel | null>(null)
 
     const newPc = async () => {
         setPc(null)
-        setUpdatePlaylistDataChan(null)
+        const data = await getOverlays()
+        if (data && data.overlays) {
+            setOverlays(data.overlays as Overlay[])
+        }
+
 
         let pc = new RTCPeerConnection({
             iceServers: [{
@@ -38,20 +68,37 @@ export default function PCProvider({ children }: Props) {
             }]
         })
 
-
-        let dataChan = pc.createDataChannel('updateplaylist')
-
-        setUpdatePlaylistDataChan(dataChan)
-
+        createDataChannel(pc)
         setPc(pc)
 
         return pc
     }
 
+    const createDataChannel = (pc: RTCPeerConnection) => {
+        const dc = pc.createDataChannel('streamDataChannel')
+        setDataChan(dc)
+
+        dc.onopen = () => console.log("open data channel")
+        dc.onclose = () => console.log("close data channel")
+
+        dc.onmessage = (event) => {
+            const data: DataChannelMsg = JSON.parse(event.data)
+            if (data.type === "overlay") setOverlays(data.message as Overlay[])
+        }
+    }
+
+    const sendMsg = async (msg: string) => {
+        if (dataChan) {
+            dataChan.send(msg)
+        }
+    }
+
     const value = {
         pc,
         newPc,
-        updatePlaylistDataChan
+        Overlays,
+        setOverlays,
+        sendMsg
     };
 
     return <PCContext.Provider value={value}>{children}</PCContext.Provider>

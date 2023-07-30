@@ -8,12 +8,15 @@ module.exports = {
   theme: {
     fontFamily: {
       'sans': ['Open Sans', 'ui-sans-serif', 'system-ui'],
-      'dots': ['dotsfont']
+      'dots': ['dotsfont'],
+      'poppins-bold': ['Poppins-Bold'],
+      'poppins-light': ['Poppins-Light']
     },
     extend: {
       colors: {
-        'background': '#051139',
-        'foreground': '#111C44'
+        'background': '#191019',
+        'foreground': '#140D14',
+        'primary': '#ea5600'
       }
     },
   },

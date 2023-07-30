@@ -19,6 +19,8 @@ export interface ProtoGrpcType {
     Main: SubtypeConstructor<typeof grpc.Client, _service_MainClient> & { service: _service_MainDefinition }
     OutputRequest: MessageTypeDefinition
     OutputResponse: MessageTypeDefinition
+    Overlay: MessageTypeDefinition
+    Overlays: MessageTypeDefinition
     SDP: MessageTypeDefinition
     Song: MessageTypeDefinition
     SongPlaylist: MessageTypeDefinition

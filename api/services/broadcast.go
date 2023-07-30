@@ -18,7 +18,7 @@ const (
 	h264FrameDuration = time.Millisecond * 25
 )
 
-func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, playlistUpdate, exit <-chan struct{}) {
+func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, exit <-chan struct{}) {
 	defer log.Println("closing broadcast func")
 
 	// Everything below is the Pion WebRTC API, thanks for using it ❤️.
@@ -266,15 +266,19 @@ func Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, p
 					log.Println("exit data channel for loop")
 					d.Close()
 					break outer
-				case <-playlistUpdate:
+				case cover := <-SendChannelData:
 					// Send message when new song starts playing.
-					err := d.SendText("")
+					err := d.SendText(cover)
 					if err != nil {
 						d.Close()
 						break outer
 					}
 				}
 			}
+		})
+
+		d.OnMessage(func(msg webrtc.DataChannelMessage) {
+			s.manageDataChannelMessage(msg.Data)
 		})
 
 		d.OnClose(func() {
@@ -426,15 +430,19 @@ outer:
 							log.Println("exit data channel for loop")
 							d.Close()
 							break outer
-						case <-playlistUpdate:
+						case cover := <-SendChannelData:
 							// Send message when new song starts playing.
-							err := d.SendText("")
+							err := d.SendText(cover)
 							if err != nil {
 								d.Close()
 								break outer
 							}
 						}
 					}
+				})
+
+				d.OnMessage(func(msg webrtc.DataChannelMessage) {
+					s.manageDataChannelMessage(msg.Data)
 				})
 
 				d.OnClose(func() {

@@ -1,6 +1,6 @@
 'use client';
 
-import { getCurrentPlaylist, updateSongPlaylist } from "@/actions";
+import { updateSongPlaylist } from "@/actions";
 import { usePC } from "@/context/pcContext";
 import { Song__Output } from "@/pb/service/Song";
 import { SongPlaylist__Output } from "@/pb/service/SongPlaylist";
@@ -12,7 +12,7 @@ type Props = {
 }
 
 const List = ({ serverPlaylist }: Props) => {
-    const { pc, updatePlaylistDataChan } = usePC();
+    const { Overlays } = usePC();
     const playlistRef = useRef<HTMLDivElement>(null);
     const dragItem = useRef<number | null>(null);
     const dragOverItem = useRef<number | null>(null);
@@ -39,7 +39,7 @@ const List = ({ serverPlaylist }: Props) => {
             const dragItemDiv = playlistRef.current.children[dragOverItem.current]
             dragItemDiv.classList.remove("opacity-40")
             dragItemDiv.classList.remove("border-l-2")
-            dragItemDiv.classList.remove("border-lime-500")
+            dragItemDiv.classList.remove("border-primary")
             dragItemDiv.classList.remove("bg-background")
 
             dragItem.current = null;
@@ -53,7 +53,7 @@ const List = ({ serverPlaylist }: Props) => {
         e.preventDefault()
         e.currentTarget.classList.add("opacity-40")
         e.currentTarget.classList.add("border-l-2")
-        e.currentTarget.classList.add("border-lime-500")
+        e.currentTarget.classList.add("border-primary")
         e.currentTarget.classList.add("bg-background")
     }
 
@@ -61,7 +61,7 @@ const List = ({ serverPlaylist }: Props) => {
         e.preventDefault()
         e.currentTarget.classList.remove("opacity-40")
         e.currentTarget.classList.remove("border-l-2")
-        e.currentTarget.classList.remove("border-lime-500")
+        e.currentTarget.classList.remove("border-primary")
         e.currentTarget.classList.remove("bg-background")
     }
 
@@ -69,18 +69,12 @@ const List = ({ serverPlaylist }: Props) => {
     }, [list])
 
     useEffect(() => {
-        if (pc && updatePlaylistDataChan) {
-            updatePlaylistDataChan.onclose = () => console.log('data channel has closed')
-            updatePlaylistDataChan.onopen = () => console.log('data channel has opened')
-
-            updatePlaylistDataChan.onmessage = async e => {
-                console.log("new song")
-                const playlist = await getCurrentPlaylist();
-                setList(playlist)
-            }
+        if (list && list.songs) {
+            const copyList = [...list.songs];
+            copyList.shift()
+            setList({ songs: copyList })
         }
-    }, [pc])
-
+    }, [Overlays])
 
     return (
         <>

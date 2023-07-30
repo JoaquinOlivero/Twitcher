@@ -92,7 +92,7 @@ const Controls = ({ status, addVideoElement, removeVideoElement }: Props) => {
 
     return (
         <div className='w-1/4 flex flex-col items-end'>
-            <div className='w-[95%] h-full bg-foreground rounded-b-xl flex justify-center items-center'>
+            <div className='w-full h-full bg-foreground rounded-b-xl flex justify-center items-center'>
                 <div className="w-[98%] h-[98%]">
                     {oStatus &&
                         <div className="flex gap-2">

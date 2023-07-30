@@ -1,5 +1,5 @@
-import Playlist from '@/components/Playlist/Playlist'
 import { checkStatus, checkTwitchCredentials, checkTwitchStreamKey, getCurrentPlaylist } from '@/actions';
+import Bottom from '@/components/Bottom/Bottom';
 import Top from '@/components/Top/Top';
 import PCProvider from '@/context/pcContext';
 
@@ -13,32 +13,15 @@ const Home = async () => {
 
     return (
         <PCProvider>
-            <div className='relative w-full h-screen mx-auto flex flex-col items-center'>
+            <div className='relative w-full h-screen mx-auto flex flex-col items-center gap-2'>
 
-                <div className='w-[100%] h-3/5 flex'>
+                <div className='w-full h-3/5'>
                     <Top status={status} statusStreamKey={statusStreamKey} twitchCredentials={twitchCredentials} />
                 </div>
 
-                <div className='w-[99%] h-2/5 flex items-center'>
-
-                    <div className='w-1/4 h-[95%]'>
-                        <div className='rounded-t-xl bg-foreground w-[95%] h-1/2'>
-                            {/* Video Source */}
-                        </div>
-
-                        <div className='bg-foreground w-[95%] h-1/2'>
-                            {/* Layouts */}
-                        </div>
-                    </div>
-
-                    <Playlist serverPlaylist={playlist} />
-
-                    <div className='w-1/4 h-[95%] flex flex-col items-end'>
-                        <div className='rounded-t-xl bg-foreground w-[95%] h-full'>
-                            {/* Search Song */}
-                        </div>
-                    </div>
-
+                {/* Bottom */}
+                <div className='w-full h-2/5'>
+                    <Bottom serverPlaylist={playlist} />
                 </div>
 
             </div>

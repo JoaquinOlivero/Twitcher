@@ -10,6 +10,8 @@ import { StatusResponse__Output } from './pb/service/StatusResponse';
 import { StatusNCSResponse__Output } from './pb/service/StatusNCSResponse';
 import { TwitchStreamKey__Output } from './pb/service/TwitchStreamKey';
 import { DevCredentials__Output } from './pb/service/DevCredentials';
+import { Overlay__Output } from './pb/service/Overlay';
+import { Overlays__Output } from './pb/service/Overlays';
 
 const PROTO_FILE = "../proto/main.proto"
 
@@ -105,6 +107,8 @@ export const updateSongPlaylist = async (songs: SongPlaylist__Output) => {
 }
 
 export const enablePreview = async (clientSdp: string) => {
+
+    
     await startAudio()
 
     await startOutput("preview")
@@ -193,6 +197,8 @@ const startAudio = async () => {
         })
 
     })
+
+
 
     return ready
 }
@@ -547,4 +553,35 @@ export const twitchAccessToken = async (code: string) => {
     })
 
     return success
+}
+
+export const getOverlays = async () => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    const overlays: Overlays__Output | undefined = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                // console.log(err)
+                resolve(undefined)
+            }
+
+            client.GetOverlays({}, (err, res) => {
+                if (err) {
+                    resolve(undefined)
+                }
+
+                if (res !== undefined) {
+                    resolve(res)
+                    revalidatePath("/")
+                } else {
+                    resolve(undefined)
+                }
+
+            })
+
+        })
+    })
+
+    return overlays   
 }

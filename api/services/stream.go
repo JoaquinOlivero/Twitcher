@@ -6,29 +6,26 @@ import (
 	"bufio"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
-	"image"
-	"image/draw"
-	"image/jpeg"
-	"image/png"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
-	"time"
 
-	"github.com/golang/freetype/truetype"
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
-	"github.com/google/renameio"
-	"github.com/nfnt/resize"
-	"golang.org/x/image/font"
-	"golang.org/x/image/math/fixed"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+type DataChannelMsg struct {
+	Type    string      `json:"type"`
+	Message interface{} `json:"message"`
+}
 
 type Song struct {
 	Page          string
@@ -42,16 +39,19 @@ type Song struct {
 
 type MainServer struct {
 	pb.UnimplementedMainServer
-	playlist  pb.SongPlaylist
-	mu        sync.Mutex
-	audioOn   bool
-	outputOn  bool
-	streamOn  bool
-	findingOn bool
+	playlist    pb.SongPlaylist
+	currentSong pb.Song
+	overlays    []OverlayObject
+	mu          sync.Mutex
+	audioOn     bool
+	outputOn    bool
+	streamOn    bool
+	findingOn   bool
 }
 
 var (
-	audioDataRes = make(chan struct{}, 300)
+	SendChannelData    = make(chan string, 10)
+	ReceiveChannelData = make(chan string, 10)
 
 	sdp                 = make(chan string, 300)
 	sdpForClientChannel = make(chan string, 300)
@@ -127,32 +127,34 @@ func (s *MainServer) Audio(wg *sync.WaitGroup) error {
 
 	exitChan := make(chan struct{})
 
+	// Init song overlay
+	s.InitOverlay()
+
 	i := 1
 	for {
+		// song := s.playlist.Songs[0]
+		s.currentSong = *s.playlist.Songs[0]
 
-		song := s.playlist.Songs[0]
-
-		// Pop the song from the queue and send message to let the client know using webRTC data channel.
+		// Pop the song from the queue.
 		go func() {
 			s.mu.Lock()
 			_, s.playlist.Songs = s.playlist.Songs[0], s.playlist.Songs[1:]
 			s.mu.Unlock()
 
-			audioDataRes <- struct{}{}
-
-			// Generate new playlist when there are ten songs left and let the client know using webRTC data channel.
+			// Generate new playlist when there are ten songs left.
 			if len(s.playlist.Songs) == 10 {
-				_, err := s.generateRandomPlaylist() // this functions appends new songs to the playlist method in the MainServer struct.
+				// this functions appends new songs to the playlist method in the MainServer struct.
+				_, err := s.generateRandomPlaylist()
 				if err != nil {
 					log.Println(err)
 				}
 
-				audioDataRes <- struct{}{}
 			}
 		}()
 
-		// Change cover
-		go changeCover(song.Name, song.Author, song.Page, song.Cover)
+		// Change song stream overlay
+		// go s.changeSongOverlay(song.Name, song.Author, song.Page, song.Cover)
+		go s.changeSongOverlay(true)
 
 		// Open named audio pipe
 		audioPipe, err := os.OpenFile("files/stream/audio", os.O_RDWR, os.ModeNamedPipe)
@@ -162,7 +164,7 @@ func (s *MainServer) Audio(wg *sync.WaitGroup) error {
 
 		cmd := exec.Command("ffmpeg",
 			"-re",
-			"-i", "files/songs/"+song.Audio,
+			"-i", "files/songs/"+s.currentSong.Audio,
 			// "-i", "pipe:0",
 			// "-c:a", "libopus", "-page_duration", "1000",
 			// "-f", "ogg", "-",
@@ -193,6 +195,7 @@ func (s *MainServer) Audio(wg *sync.WaitGroup) error {
 					log.Println("Killing audio process and breaking out of audio loop")
 
 					s.mu.Lock()
+					s.overlays = nil
 					s.audioOn = false
 					s.mu.Unlock()
 
@@ -273,6 +276,7 @@ func (s *MainServer) Output(wg *sync.WaitGroup, mode string) error {
 		"-stream_loop", "-1",
 		"-i", "files/stream/test.mp4", // Background video
 		"-i", "files/stream/audio", // Audio input pipe.
+		"-af", `volume@foo,azmq=bind_address=tcp\\\://0.0.0.0\\\:5554`,
 		"-f", "fifo", "-fifo_format", "tee", // Fifo muxer implemented to recover stream in case of failure.
 		"-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header",
 		"-map", "0:v", "-map", "1:a",
@@ -299,7 +303,7 @@ func (s *MainServer) Output(wg *sync.WaitGroup, mode string) error {
 	cmd.Start()
 
 	// webRTC connection
-	go Broadcast(sdp, sdpForClientChannel, audioDataRes, exitBrChan)
+	go s.Broadcast(sdp, sdpForClientChannel, exitBrChan)
 
 	// This go routine handles the stdout ("pipe:1") from the ffmpeg instance depending if it is needed for a preview in the web or a livestream.
 	go func() {
@@ -424,12 +428,68 @@ func (s *MainServer) StartStream(ctx context.Context, in *google_protobuf.Empty)
 
 	wg.Wait()
 
+	// Get ingest server link
+	type ResponseBody struct {
+		Ingests []struct {
+			URL string `json:"url_template"`
+		} `json:"ingests"`
+	}
+
+	req, err := http.NewRequest("GET", "https://ingest.twitch.tv/ingests", nil)
+	if err != nil {
+		log.Fatalln(err)
+		return &google_protobuf.Empty{}, err
+	}
+
+	// Send HTTP request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatalln(err)
+		return &google_protobuf.Empty{}, err
+	}
+
+	// Read response body
+	var responseBody ResponseBody
+	err = json.NewDecoder(resp.Body).Decode(&responseBody)
+	if err != nil {
+		log.Fatalln(err)
+		return &google_protobuf.Empty{}, err
+	}
+
+	resp.Body.Close()
+
+	// Get stream key
+	db, err := sql.Open("sqlite3", "data.db")
+	if err != nil {
+		log.Fatalln(err)
+		return &google_protobuf.Empty{}, err
+	}
+
+	defer db.Close()
+
+	var streamKey string
+	err = db.QueryRow("SELECT stream_key FROM users WHERE id=1").Scan(&streamKey)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return &google_protobuf.Empty{}, status.Errorf(
+				codes.FailedPrecondition,
+				fmt.Sprintln("stream key not found."),
+			)
+		}
+		log.Fatalln(err)
+		return &google_protobuf.Empty{}, err
+	}
+
+	ingestLink := strings.Replace(responseBody.Ingests[0].URL, "{stream_key}", streamKey, 1)
+
 	cmd := exec.Command("ffmpeg", "-hide_banner",
 		"-re", "-stream_loop", "-1",
 		"-thread_queue_size", "256", "-i", "pipe:0",
 		"-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
-		"-thread_queue_size", "256", "-i", "files/stream/alert",
-		"-filter_complex", "[0][1]overlay=5:5[v1];[v1][2]overlay=W-w+10:H-h+60[vout]", // Filter that actually places the overlays over the video.
+		"-i", "files/stream/alert",
+		// "-filter_complex", `[0][1]overlay=5:5[v1];[v1][2]overlay=W-w+10:H-h+60,zmq[vout]`,
+		"-filter_complex", `[1:v]scale@cover=-1:-2[ovrl];[0:v][ovrl]overlay=5:5[v1];[v1][2]overlay=W-w+10:H-h+60,zmq[vout]`,
 		"-f", "fifo", "-fifo_format", "flv", // Fifo muxer implemented to recover stream in case a failure occurs.
 		"-map", "[vout]",
 		"-map", "0:a",
@@ -439,7 +499,7 @@ func (s *MainServer) StartStream(ctx context.Context, in *google_protobuf.Empty)
 		"-c:v", "libx264",
 		"-acodec", "libmp3lame", "-q:a", "0",
 		"-flvflags", "no_duration_filesize",
-		"rtmp://bue01.contribute.live-video.net/app/live_198642898_QgYIiTqK8yCQu2sXd1jIOv79oOJBhf",
+		ingestLink,
 	)
 
 	cmd.Stdin = sr
@@ -456,7 +516,7 @@ func (s *MainServer) StartStream(ctx context.Context, in *google_protobuf.Empty)
 	exitAlerts <- struct{}{}
 
 	log.Println("stopping stream")
-	err := cmd.Process.Signal(syscall.SIGKILL)
+	err = cmd.Process.Signal(syscall.SIGKILL)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -511,6 +571,33 @@ func (s *MainServer) UpdateSongPlaylist(ctx context.Context, in *pb.SongPlaylist
 	return &google_protobuf.Empty{}, nil
 }
 
+func (s *MainServer) GetOverlays(ctx context.Context, in *google_protobuf.Empty) (*pb.Overlays, error) {
+	if len(s.overlays) == 0 {
+		return &pb.Overlays{}, nil
+	}
+
+	var overlays []*pb.Overlay
+
+	for _, overlay := range s.overlays {
+		overlays = append(overlays, &pb.Overlay{
+			Id:         overlay.Id,
+			Width:      int32(overlay.Width),
+			Height:     int32(overlay.Height),
+			PointX:     int32(overlay.PointX),
+			PointY:     int32(overlay.PointY),
+			Show:       overlay.Show,
+			CoverId:    overlay.CoverId,
+			Text:       overlay.Text,
+			FontFamily: overlay.FontFamily,
+			FontSize:   int32(overlay.FontSize),
+			LineHeight: overlay.LineHeight,
+			TextColor:  overlay.TextColor,
+		})
+	}
+
+	return &pb.Overlays{Overlays: overlays}, nil
+}
+
 // This function is required in CreateSongPlaylist() and Audio()
 func (s *MainServer) generateRandomPlaylist() (*pb.SongPlaylist, error) {
 
@@ -553,123 +640,23 @@ func (s *MainServer) generateRandomPlaylist() (*pb.SongPlaylist, error) {
 	return &s.playlist, nil
 }
 
-func changeCover(name, author, page, cover string) error {
-	// Open the original image
-	file, err := os.Open("files/covers/" + cover)
+func (s *MainServer) manageDataChannelMessage(msg []byte) {
+	type Body struct {
+		Type   string        `json:"type"`
+		Object OverlayObject `json:"object"`
+	}
+
+	var body Body
+
+	err := json.Unmarshal(msg, &body)
 	if err != nil {
-		fmt.Println("Error opening file:", err)
-		return err
-	}
-	defer file.Close()
-
-	// Decode the image
-	img, err := jpeg.Decode(file)
-	if err != nil {
-		fmt.Println("Error decoding file:", err)
-		return err
+		panic(err)
 	}
 
-	// Resize the image to a new width of 400 pixels
-	newWidth := 250
-	newHeight := 250
-	resized := resize.Resize(uint(newWidth), uint(newHeight), img, resize.Lanczos2)
-
-	// Create a new image with enough space to add text to the right
-	textWidth := 1280
-	textHeight := 720
-	withText := image.NewRGBA(image.Rect(0, 0, newWidth+textWidth, textHeight))
-	draw.Draw(withText, withText.Bounds(), resized, image.Point{0, 0}, draw.Src)
-
-	// Add song name to the right of the image
-	text := name
-	fontData, err := os.ReadFile("Poppins-Bold.ttf")
-	if err != nil {
-		fmt.Println("Error opening font file:", err)
-		return err
+	switch body.Type {
+	case "overlay":
+		s.changeOverlay(body.Object)
 	}
-	fontSize := 36.0
-	textX := newWidth + 20
-	textY := int(fontSize)
-	textColor := image.White
-	if err := addText(withText, text, fontData, fontSize, textX, textY, textColor); err != nil {
-		fmt.Println("Error adding text:", err)
-		return err
-	}
-
-	// Add author
-	text = author
-	fontData, err = os.ReadFile("Poppins-Light.ttf")
-	if err != nil {
-		fmt.Println("Error opening font file:", err)
-		return err
-	}
-	fontSize = 20.0
-	textY = 36 + 30
-	if err := addText(withText, text, fontData, fontSize, textX, textY, textColor); err != nil {
-		fmt.Println("Error adding text:", err)
-		return err
-	}
-
-	// Add ncs.io link
-	text = "https://ncs.io/" + filepath.Base(page)
-	fontSize = 15.0
-	textX = 5
-	textY = 700
-	if err := addText(withText, text, fontData, fontSize, textX, textY, textColor); err != nil {
-		fmt.Println("Error adding text:", err)
-		return err
-	}
-
-	// Save the new image to a file
-	output, err := os.Create("files/stream/next.png")
-	if err != nil {
-		fmt.Println("Error creating file:", err)
-		return err
-	}
-	defer output.Close()
-	if err := png.Encode(output, withText); err != nil {
-		fmt.Println("Error encoding file:", err)
-		return err
-	}
-
-	time.Sleep(8 * time.Second)
-
-	overlay, err := os.ReadFile("files/stream/next.png")
-	if err != nil {
-		return err
-	}
-
-	renameio.WriteFile("files/stream/stream.png", overlay, 0644)
-
-	file.Close()
-	output.Close()
-
-	return nil
-}
-
-func addText(img *image.RGBA, text string, fontFamily []byte, fontSize float64, x, y int, textColor image.Image) error {
-	// Parse font
-	fontFace, err := truetype.Parse(fontFamily)
-	if err != nil {
-		return err
-	}
-
-	// Set the font options
-	fontOptions := &truetype.Options{
-		Size: fontSize,
-		DPI:  72,
-	}
-
-	// Draw the text onto the image
-	d := &font.Drawer{
-		Dst:  img,
-		Src:  textColor,
-		Face: truetype.NewFace(fontFace, fontOptions),
-		Dot:  fixed.P(x, y),
-	}
-	d.DrawString(text)
-
-	return nil
 }
 
 func manageNamedPipes() error {

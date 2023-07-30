@@ -7,6 +7,7 @@ import type { DevCredentials as _service_DevCredentials, DevCredentials__Output 
 import type { Empty as _google_protobuf_Empty, Empty__Output as _google_protobuf_Empty__Output } from '../google/protobuf/Empty';
 import type { OutputRequest as _service_OutputRequest, OutputRequest__Output as _service_OutputRequest__Output } from '../service/OutputRequest';
 import type { OutputResponse as _service_OutputResponse, OutputResponse__Output as _service_OutputResponse__Output } from '../service/OutputResponse';
+import type { Overlays as _service_Overlays, Overlays__Output as _service_Overlays__Output } from '../service/Overlays';
 import type { SDP as _service_SDP, SDP__Output as _service_SDP__Output } from '../service/SDP';
 import type { SongPlaylist as _service_SongPlaylist, SongPlaylist__Output as _service_SongPlaylist__Output } from '../service/SongPlaylist';
 import type { StatusNCSResponse as _service_StatusNCSResponse, StatusNCSResponse__Output as _service_StatusNCSResponse__Output } from '../service/StatusNCSResponse';
@@ -77,6 +78,15 @@ export interface MainClient extends grpc.Client {
   findNewSongsNcs(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   findNewSongsNcs(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   findNewSongsNcs(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  
+  GetOverlays(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_Overlays__Output>): grpc.ClientUnaryCall;
+  GetOverlays(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_Overlays__Output>): grpc.ClientUnaryCall;
+  GetOverlays(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_Overlays__Output>): grpc.ClientUnaryCall;
+  GetOverlays(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_Overlays__Output>): grpc.ClientUnaryCall;
+  getOverlays(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_Overlays__Output>): grpc.ClientUnaryCall;
+  getOverlays(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_Overlays__Output>): grpc.ClientUnaryCall;
+  getOverlays(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_Overlays__Output>): grpc.ClientUnaryCall;
+  getOverlays(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_Overlays__Output>): grpc.ClientUnaryCall;
   
   Preview(argument: _service_SDP, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_SDP__Output>): grpc.ClientUnaryCall;
   Preview(argument: _service_SDP, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_SDP__Output>): grpc.ClientUnaryCall;
@@ -203,6 +213,8 @@ export interface MainHandlers extends grpc.UntypedServiceImplementation {
   
   FindNewSongsNCS: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _google_protobuf_Empty>;
   
+  GetOverlays: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_Overlays>;
+  
   Preview: grpc.handleUnaryCall<_service_SDP__Output, _service_SDP>;
   
   SaveTwitchDevCredentials: grpc.handleUnaryCall<_service_DevCredentials__Output, _google_protobuf_Empty>;
@@ -237,6 +249,7 @@ export interface MainDefinition extends grpc.ServiceDefinition {
   DeleteTwitchDevCredentials: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
   DeleteTwitchStreamKey: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
   FindNewSongsNCS: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
+  GetOverlays: MethodDefinition<_google_protobuf_Empty, _service_Overlays, _google_protobuf_Empty__Output, _service_Overlays__Output>
   Preview: MethodDefinition<_service_SDP, _service_SDP, _service_SDP__Output, _service_SDP__Output>
   SaveTwitchDevCredentials: MethodDefinition<_service_DevCredentials, _google_protobuf_Empty, _service_DevCredentials__Output, _google_protobuf_Empty__Output>
   StartAudio: MethodDefinition<_google_protobuf_Empty, _service_AudioResponse, _google_protobuf_Empty__Output, _service_AudioResponse__Output>
