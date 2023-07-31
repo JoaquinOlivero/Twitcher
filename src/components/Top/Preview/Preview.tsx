@@ -33,17 +33,15 @@ type Props = {
     handleSoundMuting: Function
     handleVolume: (value: number) => void
     muted: boolean
-    isLoaded: boolean
     volume: number
 }
 
 export type Ref = HTMLDivElement;
 
 const Preview = forwardRef<Ref, Props>((props, vRef) => {
-    const { newPc, Overlays, setOverlays, sendMsg } = usePC();
-    const { status, addVideoElement, videoElementSize, muted, handleSoundMuting, isLoaded, volume, handleVolume } = props
+    const { newPc, Overlays, setOverlays, sendMsg, isPreviewLoaded, fabricRef } = usePC();
+    const { status, addVideoElement, videoElementSize, muted, handleSoundMuting, volume, handleVolume } = props
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const fabricRef = useRef<fabric.Canvas | null>(null);
 
     const showPreview = async () => {
         const pc: RTCPeerConnection | null = await newPc()
@@ -94,7 +92,7 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
         var myfont = new FontFaceObserver(ffamily)
         await myfont.load()
 
-        if (isLoaded && videoElementSize) {
+        if (isPreviewLoaded && videoElementSize) {
             const textbox = new fabric.Textbox(o.text, {
                 id: o.id,
                 width: (videoElementSize.width / 1280) * o.width,
@@ -150,9 +148,8 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
         }
     }
 
-
     const addCoverImage = (o: Overlay) => {
-        if (isLoaded && videoElementSize) {
+        if (isPreviewLoaded && videoElementSize) {
             var imgObj = new Image();
             imgObj.src = `/api/covers/${o.coverId}`;
             imgObj.onload = () => {
@@ -216,24 +213,23 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
     }, [])
 
     useEffect(() => {
-        if (isLoaded && videoElementSize) {
+        if (isPreviewLoaded && videoElementSize) {
             const initFabric = () => {
                 fabricRef.current = new fabric.Canvas(canvasRef.current!, {
                     width: videoElementSize.width,
                     height: videoElementSize.height,
                 });
 
-                const canvas = fabricRef.current
-                canvas.selection = false; // disable group selection
+                fabricRef.current.selection = false; // disable group selection
             };
 
             initFabric();
         }
 
         return () => {
-            if (isLoaded) fabricRef.current!.dispose();
+            if (isPreviewLoaded) fabricRef.current!.dispose();
         }
-    }, [isLoaded])
+    }, [isPreviewLoaded])
 
     useEffect(() => {
         if (Overlays) {
@@ -275,7 +271,7 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
         <div className="w-1/2 h-full mx-auto relative">
             <div className="bg-foreground w-full h-full z-0 rounded-b-xl">
                 <div className="flex justify-center items-center bg-foreground w-full h-full z-0 rounded-b-xl">
-                    {!isLoaded && status && status.output &&
+                    {!isPreviewLoaded && status && status.output &&
                         <div className="flex justify-center items-center gap-2">
                             <span className="font-semibold tracking-wider capitalize text-white">loading preview</span>
                             <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -289,7 +285,7 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
 
             {/* Controls */}
             <div className="absolute bottom-1 left-0 z-10 w-[98%] left-1/2 transform -translate-x-1/2 text-white flex items-end">
-                {isLoaded &&
+                {isPreviewLoaded &&
                     <div className="flex items-center gap-x-1">
                         <button onClick={() => handleSoundMuting()} className="z-3">
                             {muted ?

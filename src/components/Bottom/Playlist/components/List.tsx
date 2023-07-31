@@ -12,7 +12,7 @@ type Props = {
 }
 
 const List = ({ serverPlaylist }: Props) => {
-    const { Overlays } = usePC();
+    const { Overlays, isPreviewLoaded } = usePC();
     const playlistRef = useRef<HTMLDivElement>(null);
     const dragItem = useRef<number | null>(null);
     const dragOverItem = useRef<number | null>(null);
@@ -69,7 +69,7 @@ const List = ({ serverPlaylist }: Props) => {
     }, [list])
 
     useEffect(() => {
-        if (list && list.songs) {
+        if (isPreviewLoaded && list && list.songs) {
             const copyList = [...list.songs];
             copyList.shift()
             setList({ songs: copyList })

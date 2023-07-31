@@ -19,7 +19,6 @@ const Home = async () => {
                     <Top status={status} statusStreamKey={statusStreamKey} twitchCredentials={twitchCredentials} />
                 </div>
 
-                {/* Bottom */}
                 <div className='w-full h-2/5'>
                     <Bottom serverPlaylist={playlist} />
                 </div>

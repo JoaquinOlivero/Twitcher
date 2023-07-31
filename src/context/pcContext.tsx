@@ -1,7 +1,8 @@
 'use client'
 
 import { getOverlays } from '@/actions'
-import { Dispatch, ReactNode, SetStateAction, createContext, useContext, useState } from 'react'
+import { Dispatch, MutableRefObject, ReactNode, SetStateAction, createContext, useContext, useRef, useState } from 'react'
+import * as fabric from 'fabric'; // v6
 
 type DataChannelMsg = {
     type: string
@@ -28,7 +29,10 @@ type PCContextType = {
     newPc: () => Promise<RTCPeerConnection | null>;
     Overlays: Overlay[] | null;
     setOverlays: Dispatch<SetStateAction<Overlay[] | null>>;
-    sendMsg: (msg: string) => void
+    sendMsg: (msg: string) => void;
+    isPreviewLoaded: boolean;
+    setIsPreviewLoaded: Dispatch<SetStateAction<boolean>>;
+    fabricRef: MutableRefObject<fabric.Canvas | null>;
 }
 
 const PCContextDefaultValue: PCContextType = {
@@ -36,7 +40,10 @@ const PCContextDefaultValue: PCContextType = {
     newPc: () => Promise.resolve(null),
     Overlays: null,
     setOverlays: () => { },
-    sendMsg: () => { }
+    sendMsg: () => { },
+    isPreviewLoaded: false,
+    setIsPreviewLoaded: () => { },
+    fabricRef: null!
 }
 
 export const PCContext = createContext<PCContextType>(PCContextDefaultValue)
@@ -53,6 +60,8 @@ export default function PCProvider({ children }: Props) {
     const [pc, setPc] = useState<RTCPeerConnection | null>(null)
     const [Overlays, setOverlays] = useState<Array<Overlay> | null>(null)
     const [dataChan, setDataChan] = useState<RTCDataChannel | null>(null)
+    const [isPreviewLoaded, setIsPreviewLoaded] = useState<boolean>(false)
+    const fabricRef = useRef<fabric.Canvas | null>(null);
 
     const newPc = async () => {
         setPc(null)
@@ -98,7 +107,10 @@ export default function PCProvider({ children }: Props) {
         newPc,
         Overlays,
         setOverlays,
-        sendMsg
+        sendMsg,
+        isPreviewLoaded,
+        setIsPreviewLoaded,
+        fabricRef
     };
 
     return <PCContext.Provider value={value}>{children}</PCContext.Provider>

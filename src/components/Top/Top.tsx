@@ -8,6 +8,7 @@ import Settings from "./Settings/Settings";
 import { TwitchStreamKey__Output } from "@/pb/service/TwitchStreamKey";
 import { DevCredentials__Output } from "@/pb/service/DevCredentials";
 import { checkStatus } from "@/actions";
+import { usePC } from "@/context/pcContext";
 
 type Props = {
     status: StatusResponse__Output | undefined
@@ -21,12 +22,12 @@ type VideoElementSize = {
 }
 
 const Top = ({ status, statusStreamKey, twitchCredentials }: Props) => {
+    const { setIsPreviewLoaded } = usePC();
     const vRef = useRef<HTMLDivElement>(null)
     const [streamStatus, setStreamStatus] = useState<StatusResponse__Output | undefined>(status)
     const [muted, setMuted] = useState<boolean>(typeof window !== 'undefined' && localStorage.getItem("volume") != null && Number(localStorage.getItem("volume")) == 0 ? true : false)
     const [volume, setVolume] = useState<number>(typeof window !== 'undefined' && localStorage.getItem("volume") != null ? Number(localStorage.getItem("volume")) : 10)
     const [prevVolume, setPrevVolume] = useState<number>(10)
-    const [isLoaded, setIsLoaded] = useState<boolean>(false)
     const [videoElementSize, setVideoElementSize] = useState<VideoElementSize | null>(null)
 
     const addVideoElement = (event: RTCTrackEvent) => {
@@ -40,11 +41,11 @@ const Top = ({ status, statusStreamKey, twitchCredentials }: Props) => {
             video.onloadeddata = function () {
                 const boundingClient = video.getBoundingClientRect()
                 setVideoElementSize({ width: boundingClient.width, height: boundingClient.height })
-                setIsLoaded(true)
+                setIsPreviewLoaded(true)
             }
 
             video.onerror = function () {
-                setIsLoaded(false)
+                setIsPreviewLoaded(false)
                 console.log("couldn't load video. Something went wrong")
             }
 
@@ -57,7 +58,7 @@ const Top = ({ status, statusStreamKey, twitchCredentials }: Props) => {
             vRef.current.children[1].remove()
             const status = await checkStatus();
             setStreamStatus(status)
-            setIsLoaded(false)
+            setIsPreviewLoaded(false)
         }
     }
 
@@ -119,7 +120,6 @@ const Top = ({ status, statusStreamKey, twitchCredentials }: Props) => {
                     handleSoundMuting={handleSoundMuting}
                     handleVolume={handleVolume}
                     muted={muted}
-                    isLoaded={isLoaded}
                     volume={volume}
                     videoElementSize={videoElementSize}
                     ref={vRef}
