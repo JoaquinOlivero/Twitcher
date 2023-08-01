@@ -51,8 +51,6 @@ const Sources = () => {
         }
     }
 
-
-
     return (
         <div className='w-1/4 h-full bg-foreground rounded-t-xl flex flex-col gap-2 overflow-hidden'>
             <div className="text-[#fff] w-full relative flex flex-col">
@@ -73,7 +71,7 @@ const Sources = () => {
 
                     <div className="transition hidden bg-background p-1 font-semibold text-sm tracking-wider flex flex-col gap-1">
                         {Overlays &&
-                            Overlays.map(o => {
+                            Overlays.map((o) => {
                                 return <OverlayObject object={o} key={o.id} />
                             })
                         }
@@ -93,18 +91,105 @@ type OverlayObjectProps = {
 
 const OverlayObject = ({ object }: OverlayObjectProps) => {
     const [settings, setSettings] = useState<boolean>(false)
+    const [pointX, setPointX] = useState<number | string>(object.pointX)
+    const [pointY, setPointY] = useState<number | string>(object.pointY)
+    const [width, setWidth] = useState<number | string>(object.width)
     const [showObject, setShowObject] = useState<boolean>(object.show)
     const settingsCogRef = useRef<SVGSVGElement | null>(null)
     const settingsMenuRef = useRef<HTMLDivElement | null>(null)
-    const { fabricRef } = usePC()
+    const { fabricRef, videoElementSize, sendMsg } = usePC()
 
     const handleShowClick = (id: string) => {
         setShowObject(!showObject)
-        if (fabricRef.current) {
+        if (fabricRef.current && videoElementSize) {
             const obj = fabricRef.current.getObjects().find(obj => (obj as any).id === id)
             if (obj) {
                 obj.visible = !showObject
                 fabricRef.current.renderAll()
+
+                const pointX = obj.getCoords()[0].x
+                const pointY = obj.getCoords()[0].y
+                const actualPointX = Math.round((pointX / videoElementSize.width) * 1280)
+                const actualPointY = Math.round((pointY / videoElementSize.height) * 720)
+
+                object.pointX = Math.round(actualPointX)
+                object.pointY = Math.round(actualPointY)
+
+                const scaledWidth = obj.width * obj.scaleX
+                const scaledHeight = obj.height * obj.scaleY
+                const actualWidth = (scaledWidth / videoElementSize.width) * 1280
+                const actualHeight = (scaledHeight / videoElementSize.height) * 720
+
+                object.width = actualWidth
+                object.height = actualHeight
+                object.show = !showObject
+
+                const msg = {
+                    "type": "overlay",
+                    "object": object
+                }
+
+                sendMsg(JSON.stringify(msg))
+            }
+        }
+    }
+
+    const handlePointX = (value: number) => {
+        if (!value) {
+            setPointX("")
+            return
+        }
+
+        if (fabricRef.current) {
+            setPointX(value)
+            const obj = fabricRef.current.getObjects().find(obj => (obj as any).id === object.id)
+            if (obj && videoElementSize) {
+                obj.left = (value / 720) * videoElementSize.height
+                obj.setCoords()
+                fabricRef.current.renderAll()
+                // @ts-ignore
+                obj.fire("modified", { "target": obj })
+            }
+        }
+    }
+
+    const handlePointY = (value: number) => {
+        if (!value) {
+            setPointY("")
+            return
+        }
+
+        if (fabricRef.current) {
+            setPointY(value)
+            const obj = fabricRef.current.getObjects().find(obj => (obj as any).id === object.id)
+            if (obj && videoElementSize) {
+                obj.top = (value / 1280) * videoElementSize.width
+                obj.setCoords()
+                fabricRef.current.renderAll()
+                // @ts-ignore
+                obj.fire("modified", { "target": obj })
+            }
+        }
+    }
+
+    const handleWidth = (value: number) => {
+        if (!value) {
+            setWidth("")
+            return
+        }
+        if (fabricRef.current) {
+            setWidth(value)
+
+            const obj = fabricRef.current.getObjects().find(obj => (obj as any).id === object.id)
+            if (obj && videoElementSize) {
+                if (object.id === "cover") {
+                    obj.scaleToWidth((videoElementSize.width / 1280) * value)
+                } else {
+                    obj.set("width", (videoElementSize.width / 1280) * object.width)
+                }
+                fabricRef.current.renderAll()
+                // @ts-ignore
+                obj.fire("modified", { "target": obj })
             }
         }
     }
@@ -144,23 +229,23 @@ const OverlayObject = ({ object }: OverlayObjectProps) => {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    {settings &&
+                    {settings && fabricRef.current &&
                         <div ref={settingsMenuRef} className="absolute w-40 h-auto bg-background -right-2 px-2 pb-1 rounded-t-xl flex flex-col gap-1 capitalize z-10">
                             <div className="w-full flex justify-between items-center">
                                 <span>point x</span>
-                                <input type="number" className="w-[42%] h-4 text-black outline-0 px-1" defaultValue={object.pointX} />
+                                <input type="number" className="w-[42%] h-4 text-black outline-0 px-1" value={pointX} onChange={(e) => handlePointX(parseInt(e.currentTarget.value))} />
                             </div>
                             <div className="w-full flex justify-between items-center">
                                 <span>point y</span>
-                                <input type="number" className="w-[42%] h-4 text-black outline-0 px-1" defaultValue={object.pointY} />
+                                <input type="number" className="w-[42%] h-4 text-black outline-0 px-1" value={pointY} onChange={(e) => handlePointY(parseInt(e.currentTarget.value))} />
                             </div>
                             <div className="w-full flex justify-between items-center">
                                 <span>width</span>
-                                <input type="number" className="w-[42%] h-4 text-black outline-0 px-1" defaultValue={object.width} />
+                                <input type="number" className="w-[42%] h-4 text-black outline-0 px-1" value={width} onChange={(e) => handleWidth(parseInt(e.currentTarget.value))} />
                             </div>
                             <div className="w-full flex justify-between items-center">
                                 <span>height</span>
-                                <input type="number" className="w-[42%] h-4 text-black outline-0 px-1" defaultValue={object.height} />
+                                <input type="number" className="w-[42%] h-4 text-black outline-0 px-1" value={width} onChange={(e) => handleWidth(parseInt(e.currentTarget.value))} />
                             </div>
                         </div>
                     }

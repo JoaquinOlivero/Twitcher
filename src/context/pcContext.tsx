@@ -24,6 +24,11 @@ type Overlay = {
     textColor: string
 }
 
+type VideoElementSize = {
+    width: number
+    height: number
+}
+
 type PCContextType = {
     pc: RTCPeerConnection | null;
     newPc: () => Promise<RTCPeerConnection | null>;
@@ -33,6 +38,8 @@ type PCContextType = {
     isPreviewLoaded: boolean;
     setIsPreviewLoaded: Dispatch<SetStateAction<boolean>>;
     fabricRef: MutableRefObject<fabric.Canvas | null>;
+    videoElementSize: VideoElementSize | null;
+    setVideoElementSize: Dispatch<SetStateAction<VideoElementSize | null>>
 }
 
 const PCContextDefaultValue: PCContextType = {
@@ -43,7 +50,9 @@ const PCContextDefaultValue: PCContextType = {
     sendMsg: () => { },
     isPreviewLoaded: false,
     setIsPreviewLoaded: () => { },
-    fabricRef: null!
+    fabricRef: null!,
+    videoElementSize: null,
+    setVideoElementSize: () => { },
 }
 
 export const PCContext = createContext<PCContextType>(PCContextDefaultValue)
@@ -61,6 +70,7 @@ export default function PCProvider({ children }: Props) {
     const [Overlays, setOverlays] = useState<Array<Overlay> | null>(null)
     const [dataChan, setDataChan] = useState<RTCDataChannel | null>(null)
     const [isPreviewLoaded, setIsPreviewLoaded] = useState<boolean>(false)
+    const [videoElementSize, setVideoElementSize] = useState<VideoElementSize | null>(null)
     const fabricRef = useRef<fabric.Canvas | null>(null);
 
     const newPc = async () => {
@@ -110,7 +120,9 @@ export default function PCProvider({ children }: Props) {
         sendMsg,
         isPreviewLoaded,
         setIsPreviewLoaded,
-        fabricRef
+        fabricRef,
+        videoElementSize,
+        setVideoElementSize
     };
 
     return <PCContext.Provider value={value}>{children}</PCContext.Provider>

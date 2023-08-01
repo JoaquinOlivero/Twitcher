@@ -56,28 +56,36 @@ func (s *MainServer) changeSongOverlay(send bool) {
 	for i := 0; i < len(s.overlays); i++ {
 		switch s.overlays[i].Id {
 		case "cover":
-			s.overlays[i].CoverId = s.currentSong.Cover
-			err := c.DrawImage(s.overlays[i])
-			if err != nil {
-				log.Fatalln(err)
+			if s.overlays[i].Show {
+				s.overlays[i].CoverId = s.currentSong.Cover
+				err := c.DrawImage(s.overlays[i])
+				if err != nil {
+					log.Fatalln(err)
+				}
 			}
 		case "song_name":
-			s.overlays[i].Text = s.currentSong.Name
-			err := c.DrawText(s.overlays[i])
-			if err != nil {
-				log.Fatalln(err)
+			if s.overlays[i].Show {
+				s.overlays[i].Text = s.currentSong.Name
+				err := c.DrawText(s.overlays[i])
+				if err != nil {
+					log.Fatalln(err)
+				}
 			}
 		case "song_author":
-			s.overlays[i].Text = s.currentSong.Author
-			err := c.DrawText(s.overlays[i])
-			if err != nil {
-				log.Fatalln(err)
+			if s.overlays[i].Show {
+				s.overlays[i].Text = s.currentSong.Author
+				err := c.DrawText(s.overlays[i])
+				if err != nil {
+					log.Fatalln(err)
+				}
 			}
 		case "song_page":
-			s.overlays[i].Text = s.currentSong.Page
-			err := c.DrawText(s.overlays[i])
-			if err != nil {
-				log.Fatalln(err)
+			if s.overlays[i].Show {
+				s.overlays[i].Text = s.currentSong.Page
+				err := c.DrawText(s.overlays[i])
+				if err != nil {
+					log.Fatalln(err)
+				}
 			}
 		}
 	}
@@ -101,8 +109,6 @@ func (s *MainServer) changeSongOverlay(send bool) {
 	if err := png.Encode(output, bg); err != nil {
 		log.Fatalln("Error encoding file:", err)
 	}
-
-	// time.Sleep(4 * time.Second)
 
 	// Atomically copy new image to stream.png
 	overlay, err := os.ReadFile("files/stream/next.png")

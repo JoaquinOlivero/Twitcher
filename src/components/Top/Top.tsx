@@ -22,13 +22,12 @@ type VideoElementSize = {
 }
 
 const Top = ({ status, statusStreamKey, twitchCredentials }: Props) => {
-    const { setIsPreviewLoaded } = usePC();
+    const { setIsPreviewLoaded, videoElementSize, setVideoElementSize } = usePC();
     const vRef = useRef<HTMLDivElement>(null)
     const [streamStatus, setStreamStatus] = useState<StatusResponse__Output | undefined>(status)
     const [muted, setMuted] = useState<boolean>(typeof window !== 'undefined' && localStorage.getItem("volume") != null && Number(localStorage.getItem("volume")) == 0 ? true : false)
     const [volume, setVolume] = useState<number>(typeof window !== 'undefined' && localStorage.getItem("volume") != null ? Number(localStorage.getItem("volume")) : 10)
     const [prevVolume, setPrevVolume] = useState<number>(10)
-    const [videoElementSize, setVideoElementSize] = useState<VideoElementSize | null>(null)
 
     const addVideoElement = (event: RTCTrackEvent) => {
         if (event.track.kind === "video" && vRef.current) {
@@ -121,7 +120,6 @@ const Top = ({ status, statusStreamKey, twitchCredentials }: Props) => {
                     handleVolume={handleVolume}
                     muted={muted}
                     volume={volume}
-                    videoElementSize={videoElementSize}
                     ref={vRef}
                 />
                 <Controls

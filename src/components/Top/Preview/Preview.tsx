@@ -21,15 +21,9 @@ type Overlay = {
     textColor: string
 }
 
-type VideoElementSize = {
-    width: number
-    height: number
-}
-
 type Props = {
     status: StatusResponse__Output | undefined
     addVideoElement: Function
-    videoElementSize: VideoElementSize | null
     handleSoundMuting: Function
     handleVolume: (value: number) => void
     muted: boolean
@@ -39,8 +33,8 @@ type Props = {
 export type Ref = HTMLDivElement;
 
 const Preview = forwardRef<Ref, Props>((props, vRef) => {
-    const { newPc, Overlays, setOverlays, sendMsg, isPreviewLoaded, fabricRef } = usePC();
-    const { status, addVideoElement, videoElementSize, muted, handleSoundMuting, volume, handleVolume } = props
+    const { newPc, Overlays, setOverlays, sendMsg, isPreviewLoaded, fabricRef, videoElementSize } = usePC();
+    const { status, addVideoElement, muted, handleSoundMuting, volume, handleVolume } = props
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const showPreview = async () => {
@@ -103,7 +97,8 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
                 fontSize: (videoElementSize.width / 1280) * o.fontSize,
                 lineHeight: o.lineHeight,
                 fill: o.textColor,
-                editable: false
+                editable: false,
+                visible: o.show
             })
 
             textbox.set("fontFamily", ffamily)
@@ -165,6 +160,7 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
                     lockScalingFlip: true,
                     lockRotation: true,
                     objectCaching: false,
+                    visible: o.show
                 });
 
                 image.setControlsVisibility({
@@ -198,7 +194,6 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
                     }
 
                     sendMsg(JSON.stringify(msg))
-
                 })
 
                 fabricRef.current!.add(image)
