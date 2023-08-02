@@ -90,17 +90,19 @@ message UserAuth {
 
 message Overlay {
     string id = 1;
-    int32 width = 2;
-    int32 height = 3;
-    int32 pointX = 4;
-    int32 pointY = 5;
-    bool show = 6;
-    string coverId = 7;
-    string text = 8;
-    string fontFamily = 9;
-    int32 fontSize = 10;
-    double lineHeight = 11;
-    string textColor = 12;
+    string type = 2;
+    int32 width = 3;
+    int32 height = 4;
+    int32 pointX = 5;
+    int32 pointY = 6;
+    bool show = 7;
+    string coverId = 8;
+    string text = 9;
+    string fontFamily = 10;
+    int32 fontSize = 11;
+    double lineHeight = 12;
+    string textColor = 13;
+    string textAlign = 14;
 }
 
 message Overlays {

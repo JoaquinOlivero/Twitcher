@@ -11,6 +11,7 @@ type DataChannelMsg = {
 
 type Overlay = {
     id: string
+    type: string
     width: number
     height: number
     pointX: number
@@ -22,6 +23,7 @@ type Overlay = {
     fontSize: number
     lineHeight: number
     textColor: string
+    textAlign: string
 }
 
 type VideoElementSize = {

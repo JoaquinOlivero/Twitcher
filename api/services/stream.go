@@ -128,7 +128,11 @@ func (s *MainServer) Audio(wg *sync.WaitGroup) error {
 	exitChan := make(chan struct{})
 
 	// Init song overlay
-	s.InitOverlay()
+	err = s.InitOverlay()
+	if err != nil {
+		log.Fatalln(err)
+		return err
+	}
 
 	i := 1
 	for {
@@ -581,6 +585,7 @@ func (s *MainServer) GetOverlays(ctx context.Context, in *google_protobuf.Empty)
 	for _, overlay := range s.overlays {
 		overlays = append(overlays, &pb.Overlay{
 			Id:         overlay.Id,
+			Type:       overlay.Type,
 			Width:      int32(overlay.Width),
 			Height:     int32(overlay.Height),
 			PointX:     int32(overlay.PointX),
@@ -592,6 +597,7 @@ func (s *MainServer) GetOverlays(ctx context.Context, in *google_protobuf.Empty)
 			FontSize:   int32(overlay.FontSize),
 			LineHeight: overlay.LineHeight,
 			TextColor:  overlay.TextColor,
+			TextAlign:  overlay.TextAlign,
 		})
 	}
 

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 type Overlay = {
     id: string
+    type: string
     width: number
     height: number
     pointX: number
@@ -16,6 +17,7 @@ type Overlay = {
     fontSize: number
     lineHeight: number
     textColor: string
+    textAlign: string
 }
 
 const Sources = () => {
@@ -94,6 +96,9 @@ const OverlayObject = ({ object }: OverlayObjectProps) => {
     const [pointX, setPointX] = useState<number | string>(object.pointX)
     const [pointY, setPointY] = useState<number | string>(object.pointY)
     const [width, setWidth] = useState<number | string>(object.width)
+    const [fontSize, setFontSize] = useState<number | string>(object.fontSize)
+    const [textColor, setTextColor] = useState<string>(object.textColor)
+    const [textAlign, setTextAlign] = useState<string>(object.textAlign)
     const [showObject, setShowObject] = useState<boolean>(object.show)
     const settingsCogRef = useRef<SVGSVGElement | null>(null)
     const settingsMenuRef = useRef<HTMLDivElement | null>(null)
@@ -177,20 +182,82 @@ const OverlayObject = ({ object }: OverlayObjectProps) => {
             setWidth("")
             return
         }
+
         if (fabricRef.current) {
             setWidth(value)
 
             const obj = fabricRef.current.getObjects().find(obj => (obj as any).id === object.id)
             if (obj && videoElementSize) {
-                if (object.id === "cover") {
+                if (object.type === "img") {
                     obj.scaleToWidth((videoElementSize.width / 1280) * value)
+                    fabricRef.current.renderAll()
+                    // @ts-ignore
+                    obj.fire("modified", { "target": obj })
                 } else {
-                    obj.set("width", (videoElementSize.width / 1280) * object.width)
+                    obj.set("width", (videoElementSize.width / 1280) * value)
+                    fabricRef.current.renderAll()
+                    // @ts-ignore
+                    obj.fire("resizing", { "target": obj })
                 }
+
+            }
+        }
+    }
+
+    const handleTextAlign = (value: string) => {
+        if (value === textAlign) {
+            return
+        }
+
+        if (fabricRef.current) {
+            setTextAlign(value)
+
+            const obj = fabricRef.current.getObjects().find(obj => (obj as any).id === object.id)
+            if (obj) {
+                obj.set("textAlign", value)
                 fabricRef.current.renderAll()
                 // @ts-ignore
                 obj.fire("modified", { "target": obj })
             }
+        }
+    }
+
+    const handleTextColor = (value: string) => {
+        if (value === textColor) {
+            return
+        }
+
+        if (fabricRef.current) {
+            const rgb = hexToRgb(value)
+            setTextColor(rgb)
+
+            const obj = fabricRef.current.getObjects().find(obj => (obj as any).id === object.id)
+            if (obj) {
+                obj.set("fill", `rgb(${rgb})`)
+                fabricRef.current.renderAll()
+                // @ts-ignore
+                obj.fire("modified", { "target": obj })
+            }
+        }
+    }
+
+    const handleFontSize = (value: number) => {
+        if (!value) {
+            setFontSize("")
+            return
+        }
+
+        if (fabricRef.current && videoElementSize) {
+            setFontSize(value)
+
+            const obj = fabricRef.current.getObjects().find(obj => (obj as any).id === object.id)
+            if (obj) {
+                obj.set("fontSize", (videoElementSize.width / 1280) * value)
+                fabricRef.current.renderAll()
+                // @ts-ignore
+                obj.fire("modified", { "target": obj })
+            }
+
         }
     }
 
@@ -233,24 +300,81 @@ const OverlayObject = ({ object }: OverlayObjectProps) => {
                         <div ref={settingsMenuRef} className="absolute w-40 h-auto bg-background -right-2 px-2 pb-1 rounded-t-xl flex flex-col gap-1 capitalize z-10">
                             <div className="w-full flex justify-between items-center">
                                 <span>point x</span>
-                                <input type="number" className="w-[42%] h-4 text-black outline-0 px-1" value={pointX} onChange={(e) => handlePointX(parseInt(e.currentTarget.value))} />
+                                <input type="number" className="w-[42%] h-4 text-black outline-none px-1" value={pointX} onChange={(e) => handlePointX(parseInt(e.currentTarget.value))} />
                             </div>
                             <div className="w-full flex justify-between items-center">
                                 <span>point y</span>
-                                <input type="number" className="w-[42%] h-4 text-black outline-0 px-1" value={pointY} onChange={(e) => handlePointY(parseInt(e.currentTarget.value))} />
+                                <input type="number" className="w-[42%] h-4 text-black outline-none px-1" value={pointY} onChange={(e) => handlePointY(parseInt(e.currentTarget.value))} />
                             </div>
                             <div className="w-full flex justify-between items-center">
                                 <span>width</span>
-                                <input type="number" className="w-[42%] h-4 text-black outline-0 px-1" value={width} onChange={(e) => handleWidth(parseInt(e.currentTarget.value))} />
+                                <input type="number" className="w-[42%] h-4 text-black outline-none px-1" value={width} onChange={(e) => handleWidth(parseInt(e.currentTarget.value))} />
                             </div>
-                            <div className="w-full flex justify-between items-center">
-                                <span>height</span>
-                                <input type="number" className="w-[42%] h-4 text-black outline-0 px-1" value={width} onChange={(e) => handleWidth(parseInt(e.currentTarget.value))} />
-                            </div>
+                            {object.type !== "textbox" &&
+                                <div className="w-full flex justify-between items-center">
+                                    <span>height</span>
+                                    <input type="number" className="w-[42%] h-4 text-black outline-none px-1" value={width} onChange={(e) => handleWidth(parseInt(e.currentTarget.value))} />
+                                </div>
+                            }
+                            {object.type === "textbox" &&
+                                <>
+                                    {/* <div className="w-full flex justify-between items-center">
+                                        <span>font family</span>
+                                    </div> */}
+                                    <div className="w-full flex justify-between items-center">
+                                        <span>font size</span>
+                                        <input type="number" className="w-[42%] h-4 text-black outline-none px-1" value={fontSize} onChange={(e) => handleFontSize(parseInt(e.currentTarget.value))} />
+                                    </div>
+                                    <div className="w-full flex justify-between items-center">
+                                        <span>text color</span>
+                                        <input type="color" className="w-[42%] h-4 text-black outline-none border-none px-1 cursor-pointer" value={stringRGBToHex(textColor)} onChange={(e) => handleTextColor(e.currentTarget.value)} />
+                                    </div>
+                                    <div className="w-full flex justify-between items-center">
+                                        <span>text align</span>
+                                        <div className="flex">
+                                            {/* left */}
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" onClick={() => handleTextAlign("left")} className={`w-5 h-5 cursor-pointer transition ${textAlign === "left" ? "bg-primary" : "opacity-20 hover:opacity-100"}`}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                                            </svg>
+                                            {/* center */}
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" onClick={() => handleTextAlign("center")} className={`w-5 h-5 cursor-pointer transition ${textAlign === "center" ? "bg-primary" : "opacity-20 hover:opacity-100"}`}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                                            </svg>
+                                            {/* right */}
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" onClick={() => handleTextAlign("right")} className={`w-5 h-5 cursor-pointer transition ${textAlign === "right" ? "bg-primary" : "opacity-20 hover:opacity-100"}`}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M12 17.25h8.25" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </>
+                            }
                         </div>
                     }
                 </div>
             </div>
         </div>
     )
+}
+
+function componentToHex(c: number) {
+    var hex = c.toString(16);
+    return hex.length == 1 ? "0" + hex : hex;
+}
+
+function stringRGBToHex(rgb: string) {
+    const rgbArray = rgb.split(" ")
+    return "#" + componentToHex(parseInt(rgbArray[0])) + componentToHex(parseInt(rgbArray[1])) + componentToHex(parseInt(rgbArray[2]));
+}
+
+function hexToRgb(hex: string) {
+    var c: any;
+    if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+        c = hex.substring(1).split('');
+        if (c.length == 3) {
+            c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+        }
+        c = '0x' + c.join('');
+        return [(c >> 16) & 255] + ' ' + [(c >> 8) & 255] + ' ' + [c & 255];
+    }
+    throw new Error('Bad Hex');
 }

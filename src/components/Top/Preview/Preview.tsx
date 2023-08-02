@@ -8,6 +8,7 @@ var FontFaceObserver = require('fontfaceobserver');
 
 type Overlay = {
     id: string
+    type: string
     width: number
     height: number
     pointX: number
@@ -19,6 +20,7 @@ type Overlay = {
     fontSize: number
     lineHeight: number
     textColor: string
+    textAlign: string
 }
 
 type Props = {
@@ -96,9 +98,10 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
                 lockRotation: true,
                 fontSize: (videoElementSize.width / 1280) * o.fontSize,
                 lineHeight: o.lineHeight,
-                fill: o.textColor,
+                fill: `rgb(${o.textColor})`,
                 editable: false,
-                visible: o.show
+                visible: o.show,
+                textAlign: o.textAlign
             })
 
             textbox.set("fontFamily", ffamily)
@@ -113,6 +116,20 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
                 mtr: false
             })
 
+            textbox.on("resizing", () => {
+                const width = textbox.width
+                const actualWidth = (width / videoElementSize.width) * 1280
+
+                o.width = actualWidth
+
+                const msg = {
+                    "type": "overlay",
+                    "object": o
+                }
+
+                sendMsg(JSON.stringify(msg))
+            })
+
             textbox.on("modified", (options) => {
                 const pointX = options.target.getCoords()[0].x
                 const pointY = options.target.getCoords()[0].y
@@ -122,13 +139,9 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
                 o.pointX = Math.round(actualPointX)
                 o.pointY = Math.round(actualPointY)
 
-                const scaledWidth = options.target.width * options.target.scaleX
-                const scaledHeight = options.target.height * options.target.scaleY
-                const actualWidth = (scaledWidth / videoElementSize.width) * 1280
-                const actualHeight = (scaledHeight / videoElementSize.height) * 720
-
-                o.width = actualWidth
-                o.height = actualHeight
+                o.fontSize = Math.round((textbox.fontSize / videoElementSize.width) * 1280)
+                o.textColor = textbox.fill?.toString().replaceAll("rgb", "").replaceAll("(", "").replaceAll(")", "") as string
+                o.textAlign = textbox.textAlign
 
                 const msg = {
                     "type": "overlay",
@@ -313,13 +326,3 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
 Preview.displayName = 'Preview';
 
 export default Preview
-
-const debounce = (callback: any, wait: any) => {
-    let timeoutId: any = null;
-    return (...args: any) => {
-        window.clearTimeout(timeoutId);
-        timeoutId = window.setTimeout(() => {
-            callback.apply(null, args);
-        }, wait);
-    };
-}

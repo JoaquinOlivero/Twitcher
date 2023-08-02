@@ -4,12 +4,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"image"
+	"image/color"
 	"image/draw"
 	"image/jpeg"
 	"image/png"
 	"log"
 	"math"
 	"os"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -32,6 +34,7 @@ type OverlayContext struct {
 type OverlayObject struct {
 	Id         string  `json:"id"`
 	CoverId    string  `json:"coverId"`
+	Type       string  `json:"type"`
 	Text       string  `json:"text"`
 	FontFamily string  `json:"fontFamily"`
 	FontSize   int     `json:"fontSize"`
@@ -42,6 +45,7 @@ type OverlayObject struct {
 	PointX     int     `json:"pointX"`
 	PointY     int     `json:"pointY"`
 	Show       bool    `json:"show"`
+	TextAlign  string  `json:"textAlign"`
 }
 
 func (s *MainServer) changeSongOverlay(send bool) {
@@ -143,8 +147,9 @@ func (s *MainServer) InitOverlay() error {
 	}
 
 	var coverSettings OverlayObject
-	err = db.QueryRow("SELECT id, width, height, point_x, point_y, show FROM overlays WHERE id='cover'").Scan(
+	err = db.QueryRow("SELECT id, type, width, height, point_x, point_y, show FROM overlays WHERE id='cover'").Scan(
 		&coverSettings.Id,
+		&coverSettings.Type,
 		&coverSettings.Width,
 		&coverSettings.Height,
 		&coverSettings.PointX,
@@ -158,8 +163,9 @@ func (s *MainServer) InitOverlay() error {
 	s.overlays = append(s.overlays, coverSettings)
 
 	var songNameSettings OverlayObject
-	err = db.QueryRow("SELECT id, width, height, point_x, point_y, show, font_family, font_size, line_height, text_color FROM overlays WHERE id='song_name'").Scan(
+	err = db.QueryRow("SELECT id, type, width, height, point_x, point_y, show, font_family, font_size, line_height, text_color, text_align FROM overlays WHERE id='song_name'").Scan(
 		&songNameSettings.Id,
+		&songNameSettings.Type,
 		&songNameSettings.Width,
 		&songNameSettings.Height,
 		&songNameSettings.PointX,
@@ -169,6 +175,7 @@ func (s *MainServer) InitOverlay() error {
 		&songNameSettings.FontSize,
 		&songNameSettings.LineHeight,
 		&songNameSettings.TextColor,
+		&songNameSettings.TextAlign,
 	)
 	if err != nil {
 		return err
@@ -177,8 +184,9 @@ func (s *MainServer) InitOverlay() error {
 	s.overlays = append(s.overlays, songNameSettings)
 
 	var songAuthorSettings OverlayObject
-	err = db.QueryRow("SELECT id, width, height, point_x, point_y, show, font_family, font_size, line_height, text_color FROM overlays WHERE id='song_author'").Scan(
+	err = db.QueryRow("SELECT id, type, width, height, point_x, point_y, show, font_family, font_size, line_height, text_color, text_align FROM overlays WHERE id='song_author'").Scan(
 		&songAuthorSettings.Id,
+		&songAuthorSettings.Type,
 		&songAuthorSettings.Width,
 		&songAuthorSettings.Height,
 		&songAuthorSettings.PointX,
@@ -188,6 +196,7 @@ func (s *MainServer) InitOverlay() error {
 		&songAuthorSettings.FontSize,
 		&songAuthorSettings.LineHeight,
 		&songAuthorSettings.TextColor,
+		&songAuthorSettings.TextAlign,
 	)
 	if err != nil {
 		return err
@@ -196,8 +205,9 @@ func (s *MainServer) InitOverlay() error {
 	s.overlays = append(s.overlays, songAuthorSettings)
 
 	var songPageSettings OverlayObject
-	err = db.QueryRow("SELECT id, width, height, point_x, point_y, show, font_family, font_size, line_height, text_color FROM overlays WHERE id='song_page'").Scan(
+	err = db.QueryRow("SELECT id, type, width, height, point_x, point_y, show, font_family, font_size, line_height, text_color, text_align FROM overlays WHERE id='song_page'").Scan(
 		&songPageSettings.Id,
+		&songPageSettings.Type,
 		&songPageSettings.Width,
 		&songPageSettings.Height,
 		&songPageSettings.PointX,
@@ -207,6 +217,7 @@ func (s *MainServer) InitOverlay() error {
 		&songPageSettings.FontSize,
 		&songPageSettings.LineHeight,
 		&songPageSettings.TextColor,
+		&songPageSettings.TextAlign,
 	)
 	if err != nil {
 		return err
@@ -279,7 +290,7 @@ func (c *OverlayContext) DrawText(overlay OverlayObject) error {
 
 	lineSpacing := fontOptions.Size * overlay.LineHeight
 
-	c.DrawStringWrapped(overlay.Text, float64(overlay.PointX), float64(overlay.PointY), float64(overlay.Width), lineSpacing)
+	c.DrawStringWrapped(overlay.Text, overlay.TextAlign, overlay.TextColor, float64(overlay.PointX), float64(overlay.PointY), float64(overlay.Width), lineSpacing)
 
 	return nil
 }
@@ -353,19 +364,40 @@ func fixp(x, y float64) fixed.Point26_6 {
 // DrawStringWrapped word-wraps the specified string to the given max width
 // and then draws it at the specified anchor point using the given line
 // spacing and text alignment.
-func (c *OverlayContext) DrawStringWrapped(s string, x, y, width, lineSpacing float64) {
+func (c *OverlayContext) DrawStringWrapped(s, align, textColor string, x, y, width, lineSpacing float64) {
 	lines := c.wordWrap(s, width)
 
 	y += c.fontHeight
 
 	for _, line := range lines {
+		var textX float64
+
+		w, _ := c.measureString(line)
+
+		switch align {
+		case "left":
+			textX = x
+		case "center":
+			textX = (width / 2) + x
+			textX -= 0.5 * w
+		case "right":
+			textX = x
+			textX += width - w
+		}
+
+		RGB := strings.Split(textColor, " ")
+
+		r, _ := strconv.Atoi(RGB[0])
+		g, _ := strconv.Atoi(RGB[1])
+		b, _ := strconv.Atoi(RGB[2])
+
 		d := &font.Drawer{
 			Dst:  c.bg,
-			Src:  image.White,
+			Src:  image.NewUniform(color.RGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: 255}),
 			Face: c.fontFace,
-			Dot:  fixp(x, y),
+			Dot:  fixp(textX, y),
 		}
 		d.DrawString(line)
-		y += c.fontHeight * lineSpacing
+		y += c.fontHeight + lineSpacing
 	}
 }

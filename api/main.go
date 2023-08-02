@@ -137,5 +137,56 @@ func checkDatabase() error {
 		return err
 	}
 
+	_, err = db.Exec(`
+		CREATE TABLE overlays (
+			id VARCHAR NOT NULL PRIMARY KEY,
+			type TEXT NOT NULL CHECK (type IN ("img", "textbox")),
+			width INTEGER NOT NULL,
+			height INTEGER NOT NULL,
+			point_x INTEGER NOT NULL,
+			point_y INTEGER NOT NULL,
+			show BOOLEAN NOT NULL CHECK (show IN (0, 1)),
+			font_family VARCHAR,
+			font_size INTEGER,
+			line_height REAL,
+			text_color VARCHAR,
+			text_align TEXT NOT NULL CHECK (text_align IN ("left", "center", "right")),
+			UNIQUE(id)
+		)
+	`)
+
+	if err != nil {
+		return err
+	}
+
+	// insert default overlays into the db.
+	_, err = db.Exec(`
+		INSERT INTO overlays (id, type, width, height, point_x, point_y, show) VALUES ("cover", "img", 250, 250, 5, 5, 1)
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO overlays (id, type, width, height, point_x, point_y, show, font_family, font_size, line_height, text_color, text_align) VALUES ("song_name", "textbox", 1000, 0, 275, 5, 1, "Poppins-Bold.ttf", 36, 1.16, "255 255 255", "left")
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO overlays (id, type, width, height, point_x, point_y, show, font_family, font_size, line_height, text_color, text_align) VALUES ("song_author", "textbox", 1000, 0, 275, 50, 1, "Poppins-Light.ttf", 20, 1.16, "255 255 255", "left")
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO overlays (id, type, width, height, point_x, point_y, show, font_family, font_size, line_height, text_color, text_align) VALUES ("song_page", "textbox", 1000, 0, 5, 700, 1, "Poppins-Light.ttf", 15, 1.16, "255 255 255", "left")
+	`)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

@@ -3,6 +3,7 @@
 
 export interface Overlay {
   'id'?: (string);
+  'type'?: (string);
   'width'?: (number);
   'height'?: (number);
   'pointX'?: (number);
@@ -14,10 +15,12 @@ export interface Overlay {
   'fontSize'?: (number);
   'lineHeight'?: (number | string);
   'textColor'?: (string);
+  'textAlign'?: (string);
 }
 
 export interface Overlay__Output {
   'id'?: (string);
+  'type'?: (string);
   'width'?: (number);
   'height'?: (number);
   'pointX'?: (number);
@@ -29,4 +32,5 @@ export interface Overlay__Output {
   'fontSize'?: (number);
   'lineHeight'?: (number);
   'textColor'?: (string);
+  'textAlign'?: (string);
 }
