@@ -42,10 +42,7 @@ type Mood struct {
 	Name  string
 }
 
-type AudioProbe struct {
-	Bitrate    int
-	SampleRate int
-}
+var songs []SongDetails
 
 func (s *MainServer) FindNewSongsNCS(ctx context.Context, in *google_protobuf.Empty) (*google_protobuf.Empty, error) {
 
@@ -56,11 +53,11 @@ func (s *MainServer) FindNewSongsNCS(ctx context.Context, in *google_protobuf.Em
 		)
 	}
 
+	defer log.Println("Finished finding new songs")
+
 	s.mu.Lock()
 	s.findingOn = true
 	s.mu.Unlock()
-
-	var songs []SongDetails
 
 	moods, err := getMoods()
 	if err != nil {
@@ -68,12 +65,10 @@ func (s *MainServer) FindNewSongsNCS(ctx context.Context, in *google_protobuf.Em
 	}
 
 	for _, mood := range moods {
-		moodSongs, err := crawlByMood(mood.NcsId)
+		err := crawlByMood(mood.NcsId)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
-
-		songs = append(songs, moodSongs...)
 	}
 
 	maxDownloads := 4
@@ -97,9 +92,44 @@ func (s *MainServer) FindNewSongsNCS(ctx context.Context, in *google_protobuf.Em
 			song.CoverSrc = coverURL
 
 			if song.CoverSrc != "" && song.DownloadLink != "" {
-				saveSong(song)
+				err := saveSong(song)
+				if err != nil {
+					log.Println(err)
+					<-guard
+					wg.Done()
+					return
+				}
+
+				tempFilename := song.Author + " - " + song.Name + ".mp3"
+				filename := song.Author + " - " + song.Name + ".opus"
+
+				cmd := exec.Command("ffmpeg", "-hide_banner", "-y",
+					"-i", "files/songs/"+tempFilename,
+					"-c:a", "libopus", "-b:a", "128k", "-vbr", "on", "-compression_level", "10", "-frame_duration", "60", "-application", "audio", "-page_duration", "500",
+					"files/songs/"+filename,
+				)
+
+				err = cmd.Run()
+				if err != nil {
+					// Remove from DB if error.
+					db, err := sql.Open("sqlite3", "data.db")
+					if err != nil {
+						log.Println(err)
+					}
+
+					defer db.Close()
+
+					_, err = db.Exec("DELETE FROM songs WHERE page=$1", song.Page)
+					if err != nil {
+						log.Fatalln(err)
+					}
+
+				}
+
+				os.Remove("files/songs/" + tempFilename)
+
 			} else {
-				fmt.Println("Skipping: ", song.Name)
+				log.Println("Skipping: ", song.Name)
 			}
 
 			<-guard
@@ -115,7 +145,6 @@ func (s *MainServer) FindNewSongsNCS(ctx context.Context, in *google_protobuf.Em
 	s.findingOn = false
 	s.mu.Unlock()
 
-	log.Println("Finished finding new songs")
 	return &google_protobuf.Empty{}, nil
 }
 
@@ -154,9 +183,7 @@ func getMoods() ([]Mood, error) {
 	return moods, nil
 }
 
-func crawlByMood(moodId int) ([]SongDetails, error) {
-	var songs []SongDetails
-
+func crawlByMood(moodId int) error {
 	c := colly.NewCollector(
 		colly.Async(true),
 		colly.AllowedDomains("ncs.io", "ncs.lnk.to"),
@@ -174,7 +201,7 @@ func crawlByMood(moodId int) ([]SongDetails, error) {
 		var ok bool
 
 		// Check for unwanted tags. If unwanted tags are present, ok will be set to false and the below foreach loop will break. Also the rest of the crawling will be skipped.
-		// Also, there is a call to the function "noSong" that returns false if the song is already in the database. If the song is already in the db, ok will be set to false and then break the foreach loop. This will also skip the rest of the crawling because the boolean "ok" will be false.
+		// Also, there is a call to the function "noSong" that returns false if the song is already in the database or it has already been found previously crawling for a different mood (this can happen because songs can have multiple moods). If the song is already in the db, ok will be set to false and then break the foreach loop. This will also skip the rest of the crawling because the boolean "ok" will be false.
 		e.ForEachWithBreak("td a", func(_ int, elem *colly.HTMLElement) bool {
 			if elem.Attr("class") == "tag" {
 				ok = checkTags(moodId, elem.Text)
@@ -220,14 +247,14 @@ func crawlByMood(moodId int) ([]SongDetails, error) {
 	})
 
 	c.OnRequest(func(request *colly.Request) {
-		fmt.Println("Visiting", request.URL.String())
+		log.Println("Visiting", request.URL.String())
 	})
 
 	c.Visit("https://ncs.io/music-search?q=&genre=&mood=" + strconv.Itoa(moodId))
 
 	c.Wait()
 
-	return songs, nil
+	return nil
 }
 
 func checkTags(moodId int, tag string) bool {
@@ -290,6 +317,13 @@ func getCoverURL(url string, c *colly.Collector) (coverSrc string) {
 
 // Todo: handle errors in this function.
 func songDoesNotExist(page string) bool {
+	// First check if the song has been found on a previous crawl.
+	for i := 0; i < len(songs); i++ {
+		if songs[i].Page == page {
+			return false
+		}
+	}
+
 	// Connect to db.
 	db, err := sql.Open("sqlite3", "data.db")
 	if err != nil {
@@ -321,14 +355,14 @@ func saveSong(song SongDetails) error {
 
 	defer db.Close()
 
-	// Get audio bitrate and sample rate.
-	audioFileData, err := audioData(song.DownloadLink)
+	// Download audio file.
+	audioFilename, err := downloadSong(song.DownloadLink, song.Name, song.Author)
 	if err != nil {
 		return err
 	}
 
-	// Download audio file.
-	audioFilename, err := downloadSong(song.DownloadLink, song.Name, song.Author, audioFileData.Bitrate, audioFileData.SampleRate)
+	// Check that the bitrate is below 400kbps
+	err = audioBitrate("files/songs/" + song.Author + " - " + song.Name + ".mp3")
 	if err != nil {
 		return err
 	}
@@ -339,7 +373,7 @@ func saveSong(song SongDetails) error {
 		return err
 	}
 
-	_, err = db.Exec("INSERT INTO songs (page, name, genre, author, release_date, audio_filename, cover_filename, bitrate) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", song.Page, song.Name, song.Genre, song.Author, song.ReleaseDate, audioFilename, coverFilename, audioFileData.Bitrate)
+	_, err = db.Exec("INSERT INTO songs (page, name, genre, author, release_date, audio_filename, cover_filename, bitrate) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", song.Page, song.Name, song.Genre, song.Author, song.ReleaseDate, audioFilename, coverFilename, 128)
 	if err != nil {
 		return err
 	}
@@ -347,16 +381,11 @@ func saveSong(song SongDetails) error {
 	return nil
 }
 
-func downloadSong(url, name, author string, bitrate, sampleRate int) (string, error) {
-	if bitrate > 400 {
-		err := errors.New("bitrate higher than 400kbps")
-		return "", err
-	}
+func downloadSong(url, name, author string) (string, error) {
+	tempFilename := author + " - " + name + ".mp3"
 
-	filename := author + " - " + name + ".mp3"
-
-	log.Println("Downloading: ", filename)
-	out, err := os.Create("files/songs/" + filename)
+	log.Println("Downloading: ", tempFilename)
+	out, err := os.Create("files/songs/" + tempFilename)
 	if err != nil {
 		return "", err
 	}
@@ -373,7 +402,9 @@ func downloadSong(url, name, author string, bitrate, sampleRate int) (string, er
 		return "", err
 	}
 
-	log.Println("Downloaded: ", filename)
+	log.Println("Downloaded: ", tempFilename)
+
+	filename := author + " - " + name + ".opus"
 
 	return filename, nil
 }
@@ -428,8 +459,8 @@ func downloadFile(url, saveDir string) (string, error) {
 	return filename, nil
 }
 
-func audioData(file string) (AudioProbe, error) {
-	var audioData AudioProbe
+func audioBitrate(file string) error {
+	var bitrate int
 
 	// Get sample rate.
 	cmd := exec.Command("ffprobe", "-hide_banner", "-select_streams", "a", "-show_streams", file)
@@ -443,36 +474,25 @@ func audioData(file string) (AudioProbe, error) {
 	for scanner.Scan() {
 		m := scanner.Text()
 
-		// Get sample rate
-		if strings.HasPrefix(m, "sample_rate") {
-			_, sampleRateLine, _ := strings.Cut(m, "sample_rate=")
-			sampleRateInt, err := strconv.Atoi(sampleRateLine)
-			if err != nil {
-				return audioData, err
-			}
-
-			audioData.SampleRate = sampleRateInt
-		}
-
 		// Get bitrate
 		if strings.HasPrefix(m, "bit_rate") {
 			_, bitrateLine, _ := strings.Cut(m, "bit_rate=")
 			bitrateInt, err := strconv.Atoi(bitrateLine)
 			if err != nil {
-				return audioData, err
+				return err
 			}
 
-			audioData.Bitrate = bitrateInt
+			bitrate = bitrateInt
 		}
 
 	}
 
-	if audioData.Bitrate > 400000 {
-		err := errors.New("bitrate is higher than 400kbps")
-		return audioData, err
-	}
-
 	cmd.Wait()
 
-	return audioData, nil
+	if bitrate > 400000 {
+		err := errors.New("bitrate is higher than 400kbps")
+		return err
+	}
+
+	return nil
 }

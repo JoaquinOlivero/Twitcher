@@ -81,13 +81,13 @@ func checkDatabase() error {
 
 	_, err = db.Exec(`
 		CREATE TABLE songs (
-			page VARCHAR NOT NULL PRIMARY KEY,
-			name VARCHAR(255) NOT NULL,
-			genre VARCHAR(255) NOT NULL,
-			author VARCHAR(255) NOT NULL,
-			release_date VARCHAR(255) NOT NULL,
-			audio_filename VARCHAR(255) NOT NULL,
-			cover_filename VARCHAR(255) NOT NULL,
+			page TEXT NOT NULL PRIMARY KEY,
+			name TEXT NOT NULL,
+			genre TEXT NOT NULL,
+			author TEXT NOT NULL,
+			release_date TEXT NOT NULL,
+			audio_filename TEXT NOT NULL,
+			cover_filename TEXT NOT NULL,
 			bitrate INT NOT NULL,
 			UNIQUE(page)
 		)
@@ -101,7 +101,7 @@ func checkDatabase() error {
 		CREATE TABLE moods (
 			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 			ncsid INTEGER NOT NULL,
-			name VARCHAR(255) NOT NULL,
+			name TEXT NOT NULL,
 			UNIQUE(name),
 			UNIQUE(ncsid)
 		)
@@ -114,13 +114,16 @@ func checkDatabase() error {
 	_, err = db.Exec(`
 		CREATE TABLE users (
 			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-			twitch_user_id VARCHAR(255),
-			twitch_user_name VARCHAR(255),
-			client_id VARCHAR(255),
-			secret VARCHAR(255),
-			access_token VARCHAR(255),
-			refresh_token VARCHAR(255),
-			stream_key VARCHAR(255)
+			twitch_user_id TEXT,
+			twitch_user_name TEXT,
+			client_id TEXT,
+			secret TEXT,
+			access_token TEXT,
+			refresh_token TEXT,
+			stream_key TEXT,
+			width INTEGER,
+			height INTEGER,
+			fps INTEGER
 		)
 	`)
 
@@ -137,20 +140,56 @@ func checkDatabase() error {
 		return err
 	}
 
+	// Insert moods data
+	_, err = db.Exec(`
+		INSERT INTO moods (ncsid, name) VALUES (13, 'laid back')
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO moods (ncsid, name) VALUES (17, 'relaxing')
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO moods (ncsid, name) VALUES (19, 'romantic')
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO moods (ncsid, name) VALUES (15, 'peaceful')
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO moods (ncsid, name) VALUES (4, 'epic')
+	`)
+	if err != nil {
+		return err
+	}
+
 	_, err = db.Exec(`
 		CREATE TABLE overlays (
-			id VARCHAR NOT NULL PRIMARY KEY,
+			id TEXTNULL PRIMARY KEY,
 			type TEXT NOT NULL CHECK (type IN ("img", "textbox")),
 			width INTEGER NOT NULL,
 			height INTEGER NOT NULL,
 			point_x INTEGER NOT NULL,
 			point_y INTEGER NOT NULL,
 			show BOOLEAN NOT NULL CHECK (show IN (0, 1)),
-			font_family VARCHAR,
+			font_family TEXT,
 			font_size INTEGER,
 			line_height REAL,
-			text_color VARCHAR,
-			text_align TEXT NOT NULL CHECK (text_align IN ("left", "center", "right")),
+			text_color TEXT,
+			text_align TEXT CHECK (text_align IN ("left", "center", "right")),
 			UNIQUE(id)
 		)
 	`)
