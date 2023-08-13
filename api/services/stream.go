@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	google_protobuf "github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
@@ -39,29 +40,25 @@ type Song struct {
 
 type MainServer struct {
 	pb.UnimplementedMainServer
-	playlist    pb.SongPlaylist
-	currentSong pb.Song
-	overlays    []OverlayObject
-	mu          sync.Mutex
-	audioOn     bool
-	outputOn    bool
-	streamOn    bool
-	findingOn   bool
+	playlist        pb.SongPlaylist
+	currentSong     pb.Song
+	previewCount    int
+	overlays        []OverlayObject
+	mu              sync.Mutex
+	audioOn         bool
+	outputOn        bool
+	streamOn        bool
+	findingOn       bool
+	sendChannelData chan string
+	// receiveChannelData chan string
+	sdpFromClientChan chan string
+	sdpForClientChan  chan string
+	stopOutputChan    chan struct{}
+	stopAudioChan     chan struct{}
+	stopStreamChan    chan struct{}
 }
 
 var (
-	SendChannelData    = make(chan string, 10)
-	ReceiveChannelData = make(chan string, 10)
-
-	sdp                 = make(chan string, 300)
-	sdpForClientChannel = make(chan string, 300)
-
-	stopOutputChan = make(chan struct{})
-
-	stopAudioChan = make(chan struct{})
-
-	streamStopChan = make(chan struct{})
-
 	sr, sw = io.Pipe()
 )
 
@@ -136,7 +133,6 @@ func (s *MainServer) Audio(wg *sync.WaitGroup) error {
 
 	i := 1
 	for {
-		// song := s.playlist.Songs[0]
 		s.currentSong = *s.playlist.Songs[0]
 
 		// Pop the song from the queue.
@@ -157,7 +153,6 @@ func (s *MainServer) Audio(wg *sync.WaitGroup) error {
 		}()
 
 		// Change song stream overlay
-		// go s.changeSongOverlay(song.Name, song.Author, song.Page, song.Cover)
 		go s.changeSongOverlay(true)
 
 		// Open named audio pipe
@@ -169,11 +164,8 @@ func (s *MainServer) Audio(wg *sync.WaitGroup) error {
 		cmd := exec.Command("ffmpeg",
 			"-re",
 			"-i", "files/songs/"+s.currentSong.Audio,
-			// "-i", "pipe:0",
-			// "-c:a", "libopus", "-page_duration", "1000",
-			// "-f", "ogg", "-",
 			"-c:a", "copy",
-			"-f", "mp3", "-",
+			"-f", "ogg", "-",
 		)
 
 		cmd.Stdout = audioPipe
@@ -195,7 +187,7 @@ func (s *MainServer) Audio(wg *sync.WaitGroup) error {
 				select {
 				case <-exit:
 					break routine
-				case <-stopAudioChan:
+				case <-s.stopAudioChan:
 					log.Println("Killing audio process and breaking out of audio loop")
 
 					s.mu.Lock()
@@ -237,6 +229,8 @@ func (s *MainServer) StartOutput(ctx context.Context, in *pb.OutputRequest) (*pb
 		)
 	}
 
+	s.previewCount += 1
+
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -264,29 +258,78 @@ func (s *MainServer) Output(wg *sync.WaitGroup, mode string) error {
 	}
 
 	s.mu.Lock()
+	s.sendChannelData = make(chan string, 10)
+	s.sdpFromClientChan = make(chan string, 300)
+	s.sdpForClientChan = make(chan string, 300)
+	s.stopOutputChan = make(chan struct{})
+	s.stopAudioChan = make(chan struct{})
+	s.stopStreamChan = make(chan struct{})
 	s.outputOn = true
 	s.mu.Unlock()
-
-	exitBrChan := make(chan struct{})
 
 	err := manageNamedPipes()
 	if err != nil {
 		return err
 	}
 
+	// Background video pipe.
+	bgR, bgW := io.Pipe()
+
+	// Background video go routine.
+	go func() {
+		for {
+			exitRoutine := make(chan struct{})
+
+			cmd := exec.Command("ffmpeg",
+				"-hide_banner",
+				"-y",
+				"-re",
+				"-i", "files/stream/test.mp4",
+				"-c:v", "copy",
+				"-an",
+				"-f", "h264", "-",
+			)
+
+			cmd.Stdout = bgW
+
+			cmd.Start()
+
+			go func(exitRoutine chan struct{}) {
+			outer:
+				for {
+					select {
+					case <-s.stopOutputChan:
+						err = cmd.Process.Signal(syscall.SIGKILL)
+						if err != nil {
+							log.Fatalln(err)
+						}
+
+						break outer
+					case <-exitRoutine:
+						break outer
+					}
+				}
+
+			}(exitRoutine)
+
+			cmd.Wait()
+
+			close(exitRoutine)
+		}
+	}()
+
 	cmd := exec.Command("ffmpeg",
 		"-hide_banner",
 		"-y", "-re",
 		"-stream_loop", "-1",
-		"-i", "files/stream/test.mp4", // Background video
+		"-i", "pipe:0", // Background video
 		"-i", "files/stream/audio", // Audio input pipe.
-		"-af", `volume@foo,azmq=bind_address=tcp\\\://0.0.0.0\\\:5554`,
+		// "-af", `volume@foo,azmq=bind_address=tcp\\\://0.0.0.0\\\:5554`,
 		"-f", "fifo", "-fifo_format", "tee", // Fifo muxer implemented to recover stream in case of failure.
 		"-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header",
 		"-map", "0:v", "-map", "1:a",
 		"-c:v", "copy", // Encode new video with overlays.
-		"-c:a", "libopus",
-		"-b:a", "128k", "-vbr", "on", "-compression_level", "10", "-frame_duration", "60",
+		"-c:a", "copy",
 		"-f", "tee",
 		`[select=\'a:0\':page_duration=500:f=ogg]files/stream/previewAudio
 		|
@@ -295,6 +338,7 @@ func (s *MainServer) Output(wg *sync.WaitGroup, mode string) error {
 		[f=mpegts:select=\'v:0,a\']pipe:1`,
 	)
 
+	cmd.Stdin = bgR
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		panic(err)
@@ -307,7 +351,8 @@ func (s *MainServer) Output(wg *sync.WaitGroup, mode string) error {
 	cmd.Start()
 
 	// webRTC connection
-	go s.Broadcast(sdp, sdpForClientChannel, exitBrChan)
+	// go s.Broadcast(s.sdpFromClientChan, s.sdpForClientChan, exitBrChan)
+	go s.Broadcast(s.sdpFromClientChan, s.sdpForClientChan, s.stopOutputChan)
 
 	// This go routine handles the stdout ("pipe:1") from the ffmpeg instance depending if it is needed for a preview in the web or a livestream.
 	go func() {
@@ -358,22 +403,25 @@ func (s *MainServer) Output(wg *sync.WaitGroup, mode string) error {
 
 	wg.Done()
 
-	for v := range stopOutputChan {
-		log.Println("Killing output process ", v)
+outer:
+	for {
+		select {
+		case <-s.stopOutputChan:
+			log.Println("Killing output process")
+			s.mu.Lock()
+			s.outputOn = false
+			s.streamOn = false
+			s.mu.Unlock()
 
-		s.mu.Lock()
-		s.outputOn = false
-		s.streamOn = false
-		s.mu.Unlock()
+			err = cmd.Process.Signal(syscall.SIGKILL)
+			if err != nil {
+				log.Fatalln(err)
+			}
 
-		exitBrChan <- struct{}{}
-
-		break
-	}
-
-	err = cmd.Process.Signal(syscall.SIGKILL)
-	if err != nil {
-		log.Fatalln(err)
+			break outer
+		default:
+			time.Sleep(20 * time.Millisecond)
+		}
 	}
 
 	cmd.Wait()
@@ -386,8 +434,8 @@ func (s *MainServer) Status(ctx context.Context, in *google_protobuf.Empty) (*pb
 }
 
 func (s *MainServer) StopOutput(ctx context.Context, in *google_protobuf.Empty) (*google_protobuf.Empty, error) {
-	stopOutputChan <- struct{}{}
-	stopAudioChan <- struct{}{}
+	close(s.stopOutputChan)
+	s.stopAudioChan <- struct{}{}
 
 	return &google_protobuf.Empty{}, nil
 }
@@ -401,9 +449,11 @@ func (s *MainServer) Preview(ctx context.Context, in *pb.SDP) (*pb.SDP, error) {
 		)
 	}
 
-	sdp <- in.Sdp
+	s.previewCount += 1
 
-	sdpForClient := <-sdpForClientChannel
+	s.sdpFromClientChan <- in.Sdp
+
+	sdpForClient := <-s.sdpForClientChan
 
 	return &pb.SDP{Sdp: sdpForClient}, nil
 }
@@ -489,11 +539,11 @@ func (s *MainServer) StartStream(ctx context.Context, in *google_protobuf.Empty)
 
 	cmd := exec.Command("ffmpeg", "-hide_banner",
 		"-re", "-stream_loop", "-1",
-		"-thread_queue_size", "256", "-i", "pipe:0",
-		"-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
+		"-thread_queue_size", "128", "-i", "pipe:0",
+		"-thread_queue_size", "128", "-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
 		"-i", "files/stream/alert",
-		// "-filter_complex", `[0][1]overlay=5:5[v1];[v1][2]overlay=W-w+10:H-h+60,zmq[vout]`,
-		"-filter_complex", `[1:v]scale@cover=-1:-2[ovrl];[0:v][ovrl]overlay=5:5[v1];[v1][2]overlay=W-w+10:H-h+60,zmq[vout]`,
+		"-filter_complex", `[0][1]overlay=0:0[v1];[v1][2]overlay=W-w+10:H-h+60,zmq[vout]`,
+		// "-filter_complex", `[1:v]scale@cover=-1:-2[ovrl];[0:v][ovrl]overlay=5:5[v1];[v1][2]overlay=W-w+10:H-h+60,zmq[vout]`,
 		"-f", "fifo", "-fifo_format", "flv", // Fifo muxer implemented to recover stream in case a failure occurs.
 		"-map", "[vout]",
 		"-map", "0:a",
@@ -514,7 +564,7 @@ func (s *MainServer) StartStream(ctx context.Context, in *google_protobuf.Empty)
 	cmd.Start()
 
 	// Wait until stop command is received.
-	<-streamStopChan
+	<-s.stopStreamChan
 
 	log.Println("disconnecting from Twitch's websocket server")
 	exitAlerts <- struct{}{}
@@ -545,7 +595,7 @@ func (s *MainServer) StartStream(ctx context.Context, in *google_protobuf.Empty)
 }
 
 func (s *MainServer) StopStream(ctx context.Context, in *google_protobuf.Empty) (*google_protobuf.Empty, error) {
-	streamStopChan <- struct{}{}
+	s.stopStreamChan <- struct{}{}
 	return &google_protobuf.Empty{}, nil
 }
 
