@@ -56,7 +56,7 @@ func checkDatabase() error {
 	log.Println("Checking database")
 
 	// Check if database already exists.
-	file, err := os.OpenFile("data.db", os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
+	file, err := os.OpenFile("data.db", os.O_RDWR|os.O_CREATE|os.O_EXCL, 0744)
 	if err != nil {
 		defer file.Close()
 
@@ -69,6 +69,22 @@ func checkDatabase() error {
 	}
 
 	file.Close()
+	// First time starting the program.
+	// Create necessary directories.
+	err = os.MkdirAll("files/covers", 0744)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	err = os.MkdirAll("files/songs", 0744)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	err = os.MkdirAll("files/stream/alerts", 0744)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	// Create tables
 	db, err := sql.Open("sqlite3", "data.db")
