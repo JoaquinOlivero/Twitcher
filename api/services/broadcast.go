@@ -9,6 +9,7 @@ import (
 
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/intervalpli"
+	"github.com/pion/interceptor/pkg/nack"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
 	"github.com/pion/webrtc/v3/pkg/media/h264reader"
@@ -19,6 +20,7 @@ const (
 )
 
 func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, exit <-chan struct{}) {
+	stop := make(chan struct{})
 	defer log.Println("closing broadcast func")
 
 	// Everything below is the Pion WebRTC API, thanks for using it ❤️.
@@ -59,9 +61,14 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 	}
 	i.Add(intervalPliFactory)
 
+	responder, err := nack.NewResponderInterceptor(nack.DisableCopy())
+	if err != nil {
+		panic(err)
+	}
+	i.Add(responder)
+
 	// Create a new RTCPeerConnection
-	// peerConnection, err := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i)).NewPeerConnection(peerConnectionConfig)
-	peerConnection, err := webrtc.NewPeerConnection(peerConnectionConfig)
+	peerConnection, err := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i)).NewPeerConnection(peerConnectionConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -102,13 +109,15 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 	// Read incoming RTCP packets
 	// Before these packets are returned they are processed by interceptors. For things
 	// like NACK this needs to be called.
-	go func(exit <-chan struct{}) {
+	go func(stop <-chan struct{}) {
 		defer log.Println("closing video rtcp")
 		rtcpBuf := make([]byte, 1500)
 
 	outer:
 		for {
 			select {
+			case <-stop:
+				break outer
 			case <-exit:
 				break outer
 			default:
@@ -117,7 +126,7 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 				}
 			}
 		}
-	}(exit)
+	}(stop)
 
 	go func(exit <-chan struct{}) {
 		defer log.Println("closing video")
@@ -188,13 +197,15 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 	// Read incoming RTCP packets
 	// Before these packets are returned they are processed by interceptors. For things
 	// like NACK this needs to be called.
-	go func(exit <-chan struct{}) {
+	go func(stop <-chan struct{}) {
 		defer log.Println("closing audio rtcp")
 		rtcpBuf := make([]byte, 1500)
 
 	outer:
 		for {
 			select {
+			case <-stop:
+				break outer
 			case <-exit:
 				break outer
 			default:
@@ -203,7 +214,7 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 				}
 			}
 		}
-	}(exit)
+	}(stop)
 
 	go func(exit <-chan struct{}) {
 		defer log.Println("closing audio")
@@ -266,7 +277,7 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 					log.Println("exit data channel for loop")
 					d.Close()
 					break outer
-				case cover := <-SendChannelData:
+				case cover := <-s.sendChannelData:
 					// Send message when new song starts playing.
 					err := d.SendText(cover)
 					if err != nil {
@@ -296,6 +307,7 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 
 		if connectionState.String() == "disconnected" {
 			peerConnection.Close()
+			s.previewCount -= 1
 			return
 		}
 	})
@@ -352,16 +364,40 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 
 outer:
 	for {
-
 		select {
 		case <-exit:
 			break outer
 		case sdp := <-sdpFromClient:
+			stop := make(chan struct{})
+
 			recvOnlyOffer := webrtc.SessionDescription{}
 			Decode(sdp, &recvOnlyOffer)
 
+			m := &webrtc.MediaEngine{}
+			if err := m.RegisterDefaultCodecs(); err != nil {
+				panic(err)
+			}
+
+			i := &interceptor.Registry{}
+
+			if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
+				panic(err)
+			}
+
+			intervalPliFactory, err := intervalpli.NewReceiverInterceptor()
+			if err != nil {
+				panic(err)
+			}
+			i.Add(intervalPliFactory)
+
+			responder, err := nack.NewResponderInterceptor(nack.DisableCopy())
+			if err != nil {
+				panic(err)
+			}
+			i.Add(responder)
+
 			// Create a new PeerConnection
-			peerConnection, err := webrtc.NewPeerConnection(peerConnectionConfig)
+			peerConnection, err := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i)).NewPeerConnection(peerConnectionConfig)
 			if err != nil {
 				peerConnection.Close()
 				panic(err)
@@ -376,12 +412,14 @@ outer:
 			// Read incoming RTCP packets
 			// Before these packets are returned they are processed by interceptors. For things
 			// like NACK this needs to be called.
-			go func(exit <-chan struct{}) {
+			go func(stop <-chan struct{}) {
 				rtcpBuf := make([]byte, 1500)
 
 			outer:
 				for {
 					select {
+					case <-stop:
+						break outer
 					case <-exit:
 						break outer
 					default:
@@ -391,7 +429,7 @@ outer:
 						}
 					}
 				}
-			}(exit)
+			}(stop)
 
 			rtpAudioSender, err := peerConnection.AddTrack(localAudioTrack)
 			if err != nil {
@@ -401,13 +439,15 @@ outer:
 			// Read incoming RTCP packets
 			// Before these packets are returned they are processed by interceptors. For things
 			// like NACK this needs to be called.
-			go func(exit <-chan struct{}) {
+			go func(stop <-chan struct{}) {
 				rtcpBuf := make([]byte, 1500)
 
 			outer:
 				for {
 					select {
 					case <-exit:
+						break outer
+					case <-stop:
 						break outer
 					default:
 						if _, _, rtcpErr := rtpAudioSender.Read(rtcpBuf); rtcpErr != nil {
@@ -416,7 +456,7 @@ outer:
 						}
 					}
 				}
-			}(exit)
+			}(stop)
 
 			// Register data channel creation handling
 			peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
@@ -430,7 +470,7 @@ outer:
 							log.Println("exit data channel for loop")
 							d.Close()
 							break outer
-						case cover := <-SendChannelData:
+						case cover := <-s.sendChannelData:
 							// Send message when new song starts playing.
 							err := d.SendText(cover)
 							if err != nil {
@@ -460,6 +500,8 @@ outer:
 
 				if connectionState.String() == "disconnected" {
 					peerConnection.Close()
+					s.previewCount -= 1
+					close(stop)
 					return
 				}
 			})
