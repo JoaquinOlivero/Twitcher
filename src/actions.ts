@@ -10,8 +10,9 @@ import { StatusResponse__Output } from './pb/service/StatusResponse';
 import { StatusNCSResponse__Output } from './pb/service/StatusNCSResponse';
 import { TwitchStreamKey__Output } from './pb/service/TwitchStreamKey';
 import { DevCredentials__Output } from './pb/service/DevCredentials';
-import { Overlay__Output } from './pb/service/Overlay';
 import { Overlays__Output } from './pb/service/Overlays';
+import { BackgroundVideosResponse__Output } from './pb/service/BackgroundVideosResponse';
+import { BackgroundVideo, BackgroundVideo__Output } from './pb/service/BackgroundVideo';
 
 const PROTO_FILE = "../proto/main.proto"
 
@@ -108,7 +109,7 @@ export const updateSongPlaylist = async (songs: SongPlaylist__Output) => {
 
 export const enablePreview = async (clientSdp: string) => {
 
-    
+
     await startAudio()
 
     await startOutput("preview")
@@ -583,5 +584,160 @@ export const getOverlays = async () => {
         })
     })
 
-    return overlays   
+    return overlays
+}
+
+export const getBgVideos = async () => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    const videos: BackgroundVideosResponse__Output | undefined = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                console.log(err)
+                resolve(undefined)
+            }
+
+            client.BackgroundVideos({}, (err, res) => {
+                if (err) {
+                    resolve(undefined)
+                }
+
+                if (res !== undefined) {
+                    resolve(res)
+                    revalidatePath("/")
+                } else {
+                    resolve(undefined)
+                }
+
+            })
+
+        })
+    })
+
+    return videos
+}
+
+export const swapBgVideo = async (video: BackgroundVideo) => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                console.log(err)
+                resolve(undefined)
+            }
+
+            client.SwapBackgroundVideo(video, (err, res) => {
+                if (err) {
+                    resolve(undefined)
+                }
+
+                if (res !== undefined) {
+                    resolve(res)
+                    revalidatePath("/")
+                } else {
+                    resolve(undefined)
+                }
+
+            })
+        })
+    })
+
+    return
+}
+
+export const uploadVideoFile = async (formData: FormData) => {
+    const file = formData.get("file") as File
+
+    type UploadResponse = {
+        ok: boolean,
+        msg: string
+    }
+
+    const res: UploadResponse = await new Promise(async (resolve) => {
+        const call = client.UploadVideo((error, res) => {
+            if (error) {
+                if (error.code === 6) {
+                    resolve({ ok: false, msg: "file already exists" })
+                    call.end()
+                    return
+                }
+
+                resolve({ ok: false, msg: error.message })
+                call.end()
+                return
+            } else {
+                resolve({ ok: true, msg: "" })
+            }
+
+        })
+
+        call.write({ info: { fileName: file.name, size: file.size.toString(), type: file.type } })
+
+        var chunkCounter = 0;
+
+        //break into 2 MB chunks fat minimum
+        const chunkSize = 2097152;
+
+        var start = 0;
+        var chunkEnd = start + chunkSize;
+
+        do {
+            // Create chunk
+            chunkCounter++;
+            chunkEnd = Math.min(start + chunkSize, file.size);
+            const chunk = await file.slice(start, chunkEnd).arrayBuffer();
+
+            const buffer = Buffer.from(chunk);
+
+            // upload chunk
+            call.write({ chunk: buffer })
+
+            start += chunkSize;
+
+        } while (start < file.size);
+
+        call.end()
+
+        return
+    })
+
+    return res
+}
+
+export const deleteBgVideo = async (video: BackgroundVideo) => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    type DeleteResponse = {
+        ok: boolean,
+        msg: string
+    }
+
+    const res: DeleteResponse = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                console.log(err)
+                resolve({ ok: false, msg: err.message })
+            }
+
+            client.DeleteBackgroundVideo(video, (err, res) => {
+                if (err) {
+                    console.log(err)
+                    resolve({ ok: false, msg: err.message })
+                }
+
+                if (res !== undefined) {
+                    resolve({ ok: true, msg: "" })
+                    revalidatePath("/")
+                } else {
+                    resolve({ ok: false, msg: "" })
+                }
+            })
+        })
+    })
+
+    return res
 }

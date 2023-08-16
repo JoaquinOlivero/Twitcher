@@ -1,6 +1,11 @@
 'use client';
 
+import { deleteBgVideo, getBgVideos, swapBgVideo, uploadVideoFile } from "@/actions";
+import Modal from "@/components/Modal/Modal";
+import ActionButton from "@/components/Utils/ActionButton";
 import { usePC } from "@/context/pcContext";
+import { BackgroundVideo__Output } from "@/pb/service/BackgroundVideo";
+import { BackgroundVideosResponse__Output } from "@/pb/service/BackgroundVideosResponse";
 import { useEffect, useRef, useState } from "react";
 
 type Overlay = {
@@ -20,7 +25,12 @@ type Overlay = {
     textAlign: string
 }
 
-const Sources = () => {
+
+type Props = {
+    bgVideos: BackgroundVideosResponse__Output['videos'] | undefined
+}
+
+const Sources = ({ bgVideos }: Props) => {
     const { Overlays } = usePC();
 
     const handleMenuClick = (element: EventTarget & HTMLDivElement) => {
@@ -79,6 +89,18 @@ const Sources = () => {
                         }
                     </div>
                 </div>
+
+                <div className="text-white w-[98%] mx-auto">
+                    <div className="flex justify-between cursor-pointer transition hover:bg-background" onClick={(e) => handleMenuClick(e.currentTarget)}>
+                        <span className="capitalize font-semibold tracking-wider">Background Video</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </div>
+                    <div className="transition hidden bg-background p-1 font-semibold text-sm tracking-wider flex flex-col gap-1">
+                        <BackgroundVideos bgVideos={bgVideos} />
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -86,6 +108,141 @@ const Sources = () => {
 }
 
 export default Sources
+
+const BackgroundVideos = ({ bgVideos }: Props) => {
+    const [file, setFile] = useState<File | null>(null)
+    const [videos, setVideos] = useState<BackgroundVideo__Output[] | undefined>(bgVideos)
+    const [isUploading, setIsUploading] = useState<boolean>(false)
+    const [uploadStatus, setUploadStatus] = useState<boolean | null>(null)
+    const [errorMessage, setErrorMessage] = useState<string | null>(null)
+    const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null)
+    const [isOpen, setIsOpen] = useState<boolean>(false)
+    const ref = useRef<HTMLInputElement>(null)
+
+    const handleFileSubmit = async () => {
+        if (file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            setIsUploading(true)
+            const res = await uploadVideoFile(formData)
+            setFile(null)
+            setIsUploading(false)
+
+            setUploadStatus(res.ok)
+            setErrorMessage(res.msg)
+
+            const bgVideos = await getBgVideos()
+
+            if (bgVideos) {
+                setVideos(bgVideos?.videos)
+            }
+
+            await delay(2500)
+            setUploadStatus(null)
+            if (ref.current) {
+                ref.current.value = ""
+            }
+
+        }
+    }
+
+    const handleSelectBgVideo = async (video: BackgroundVideo__Output) => {
+        await swapBgVideo(video)
+        const bgVideos = await getBgVideos()
+
+        if (bgVideos) {
+            setVideos(bgVideos?.videos)
+        }
+    }
+
+    const handleDeleteBgVideo = async (video: BackgroundVideo__Output) => {
+        const res = await deleteBgVideo(video)
+        if (res.ok) {
+            const bgVideos = await getBgVideos()
+
+            if (bgVideos) {
+                setVideos(bgVideos?.videos)
+            }
+        } else {
+            setDeleteErrorMessage(res.msg)
+            await delay(2500)
+            setDeleteErrorMessage(null)
+        }
+    }
+
+    useEffect(() => {
+    }, [videos])
+
+
+    return (
+        <div className="w-full flex flex-col gap-1">
+            <div className="w-full flex items-center justify-end uppercase">
+                <div className="w-auto flex gap-1 cursor-pointer text-xs opacity-70 transition hover:opacity-100 hover:text-primary" onClick={() => setIsOpen(true)}>
+                    <span>Upload File</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                </div>
+            </div>
+
+            <Modal tWidth="w-1/4" tHeight="h-1/4" isOpen={isOpen} setIsOpen={setIsOpen}>
+                <div className="relative w-full h-full flex items-center justify-center">
+                    <div className="flex flex-col gap-2 text-base w-full">
+                        <label className="text-md text-center" >Upload file</label>
+                        <input type="file" ref={ref} onChange={(e) => setFile(e.target.files && e.target.files[0])}
+                            className="bg-background w-full text-sm rounded cursor-pointer focus:outline-none dark:placeholder-gray-400" />
+                    </div>
+                    {file &&
+                        <div className="absolute right-0 w-1/4 self-end">
+                            <ActionButton
+                                text="start upload"
+                                waitingText="uploading"
+                                width="full"
+                                disabled={isUploading}
+                                isWaiting={isUploading}
+                                backgroundColor="bg-primary"
+                                backgroundColorHover="bg-primary/70"
+                                onClick={() => handleFileSubmit()}
+                            />
+                        </div>
+                    }
+                    {uploadStatus !== null &&
+                        <div className="absolute left-0 w-full text-center self-end uppercase font-bold">
+                            {uploadStatus && <span className="text-lime-400">successful upload</span>}
+                            {!uploadStatus &&
+                                <span className="text-red-600">upload failed. {errorMessage}</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </Modal>
+
+            {videos && videos.map((video) => {
+                return <div className="w-full flex items-center gap-1" key={video.id}>
+                    <div className="w-3/4 truncate">{video.name}</div>
+                    <div className="w-1/4 flex items-center justify-end">
+
+                        {video.active ?
+                            <span className="w-3/4 bg-primary border-2 border-primary rounded font-bold text-center transition opacity-80 pointer-events-none">selected</span>
+                            :
+                            <div className="flex w-full justify-end items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" onClick={() => handleDeleteBgVideo(video)} className="w-[19px] h-[19px] cursor-pointer transition hover:text-red-600">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                                <span className="w-3/4 border-2 rounded cursor-pointer opacity-70 font-bold text-center transition hover:opacity-100 hover:border-primary" onClick={() => handleSelectBgVideo(video)}>select</span>
+                            </div>
+                        }
+                    </div>
+
+                    {deleteErrorMessage && <span className="absolute w-3/4 top-0 text-red-500 truncate hover:h-auto">{deleteErrorMessage}</span>}
+                </div>
+            })}
+
+        </div>
+    )
+}
+
 
 type OverlayObjectProps = {
     object: Overlay
@@ -377,4 +534,8 @@ function hexToRgb(hex: string) {
         return [(c >> 16) & 255] + ' ' + [(c >> 8) & 255] + ' ' + [c & 255];
     }
     throw new Error('Bad Hex');
+}
+
+function delay(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }

@@ -15,6 +15,8 @@ export interface ProtoGrpcType {
   }
   service: {
     AudioResponse: MessageTypeDefinition
+    BackgroundVideo: MessageTypeDefinition
+    BackgroundVideosResponse: MessageTypeDefinition
     DevCredentials: MessageTypeDefinition
     Main: SubtypeConstructor<typeof grpc.Client, _service_MainClient> & { service: _service_MainDefinition }
     OutputRequest: MessageTypeDefinition
@@ -27,7 +29,10 @@ export interface ProtoGrpcType {
     StatusNCSResponse: MessageTypeDefinition
     StatusResponse: MessageTypeDefinition
     TwitchStreamKey: MessageTypeDefinition
+    UploadVideoRequest: MessageTypeDefinition
+    UploadVideoResponse: MessageTypeDefinition
     UserAuth: MessageTypeDefinition
+    VideoInfo: MessageTypeDefinition
   }
 }
 

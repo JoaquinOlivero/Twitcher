@@ -1,4 +1,4 @@
-import { checkStatus, checkTwitchCredentials, checkTwitchStreamKey, getCurrentPlaylist } from '@/actions';
+import { checkStatus, checkTwitchCredentials, checkTwitchStreamKey, getBgVideos, getCurrentPlaylist } from '@/actions';
 import Bottom from '@/components/Bottom/Bottom';
 import Top from '@/components/Top/Top';
 import PCProvider from '@/context/pcContext';
@@ -10,6 +10,7 @@ const Home = async () => {
     const status = await checkStatus();
     const statusStreamKey = await checkTwitchStreamKey();
     const twitchCredentials = await checkTwitchCredentials();
+    const bgVideos = await getBgVideos()
 
     return (
         <PCProvider>
@@ -20,7 +21,7 @@ const Home = async () => {
                 </div>
 
                 <div className='w-full h-2/5'>
-                    <Bottom serverPlaylist={playlist} />
+                    <Bottom serverPlaylist={playlist} bgVideos={bgVideos?.videos} />
                 </div>
 
             </div>

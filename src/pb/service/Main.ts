@@ -3,6 +3,8 @@
 import type * as grpc from '@grpc/grpc-js'
 import type { MethodDefinition } from '@grpc/proto-loader'
 import type { AudioResponse as _service_AudioResponse, AudioResponse__Output as _service_AudioResponse__Output } from '../service/AudioResponse';
+import type { BackgroundVideo as _service_BackgroundVideo, BackgroundVideo__Output as _service_BackgroundVideo__Output } from '../service/BackgroundVideo';
+import type { BackgroundVideosResponse as _service_BackgroundVideosResponse, BackgroundVideosResponse__Output as _service_BackgroundVideosResponse__Output } from '../service/BackgroundVideosResponse';
 import type { DevCredentials as _service_DevCredentials, DevCredentials__Output as _service_DevCredentials__Output } from '../service/DevCredentials';
 import type { Empty as _google_protobuf_Empty, Empty__Output as _google_protobuf_Empty__Output } from '../google/protobuf/Empty';
 import type { OutputRequest as _service_OutputRequest, OutputRequest__Output as _service_OutputRequest__Output } from '../service/OutputRequest';
@@ -13,9 +15,20 @@ import type { SongPlaylist as _service_SongPlaylist, SongPlaylist__Output as _se
 import type { StatusNCSResponse as _service_StatusNCSResponse, StatusNCSResponse__Output as _service_StatusNCSResponse__Output } from '../service/StatusNCSResponse';
 import type { StatusResponse as _service_StatusResponse, StatusResponse__Output as _service_StatusResponse__Output } from '../service/StatusResponse';
 import type { TwitchStreamKey as _service_TwitchStreamKey, TwitchStreamKey__Output as _service_TwitchStreamKey__Output } from '../service/TwitchStreamKey';
+import type { UploadVideoRequest as _service_UploadVideoRequest, UploadVideoRequest__Output as _service_UploadVideoRequest__Output } from '../service/UploadVideoRequest';
+import type { UploadVideoResponse as _service_UploadVideoResponse, UploadVideoResponse__Output as _service_UploadVideoResponse__Output } from '../service/UploadVideoResponse';
 import type { UserAuth as _service_UserAuth, UserAuth__Output as _service_UserAuth__Output } from '../service/UserAuth';
 
 export interface MainClient extends grpc.Client {
+  BackgroundVideos(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_BackgroundVideosResponse__Output>): grpc.ClientUnaryCall;
+  BackgroundVideos(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_BackgroundVideosResponse__Output>): grpc.ClientUnaryCall;
+  BackgroundVideos(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_BackgroundVideosResponse__Output>): grpc.ClientUnaryCall;
+  BackgroundVideos(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_BackgroundVideosResponse__Output>): grpc.ClientUnaryCall;
+  backgroundVideos(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_BackgroundVideosResponse__Output>): grpc.ClientUnaryCall;
+  backgroundVideos(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_BackgroundVideosResponse__Output>): grpc.ClientUnaryCall;
+  backgroundVideos(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_BackgroundVideosResponse__Output>): grpc.ClientUnaryCall;
+  backgroundVideos(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_BackgroundVideosResponse__Output>): grpc.ClientUnaryCall;
+  
   CheckTwitchDevCredentials(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_DevCredentials__Output>): grpc.ClientUnaryCall;
   CheckTwitchDevCredentials(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_DevCredentials__Output>): grpc.ClientUnaryCall;
   CheckTwitchDevCredentials(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_DevCredentials__Output>): grpc.ClientUnaryCall;
@@ -51,6 +64,15 @@ export interface MainClient extends grpc.Client {
   currentSongPlaylist(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_SongPlaylist__Output>): grpc.ClientUnaryCall;
   currentSongPlaylist(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_SongPlaylist__Output>): grpc.ClientUnaryCall;
   currentSongPlaylist(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_SongPlaylist__Output>): grpc.ClientUnaryCall;
+  
+  DeleteBackgroundVideo(argument: _service_BackgroundVideo, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  DeleteBackgroundVideo(argument: _service_BackgroundVideo, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  DeleteBackgroundVideo(argument: _service_BackgroundVideo, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  DeleteBackgroundVideo(argument: _service_BackgroundVideo, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  deleteBackgroundVideo(argument: _service_BackgroundVideo, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  deleteBackgroundVideo(argument: _service_BackgroundVideo, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  deleteBackgroundVideo(argument: _service_BackgroundVideo, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  deleteBackgroundVideo(argument: _service_BackgroundVideo, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   
   DeleteTwitchDevCredentials(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   DeleteTwitchDevCredentials(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
@@ -169,6 +191,15 @@ export interface MainClient extends grpc.Client {
   stopStream(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   stopStream(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   
+  SwapBackgroundVideo(argument: _service_BackgroundVideo, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  SwapBackgroundVideo(argument: _service_BackgroundVideo, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  SwapBackgroundVideo(argument: _service_BackgroundVideo, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  SwapBackgroundVideo(argument: _service_BackgroundVideo, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  swapBackgroundVideo(argument: _service_BackgroundVideo, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  swapBackgroundVideo(argument: _service_BackgroundVideo, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  swapBackgroundVideo(argument: _service_BackgroundVideo, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  swapBackgroundVideo(argument: _service_BackgroundVideo, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  
   TwitchAccessToken(argument: _service_UserAuth, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   TwitchAccessToken(argument: _service_UserAuth, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   TwitchAccessToken(argument: _service_UserAuth, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
@@ -196,9 +227,20 @@ export interface MainClient extends grpc.Client {
   updateSongPlaylist(argument: _service_SongPlaylist, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   updateSongPlaylist(argument: _service_SongPlaylist, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   
+  UploadVideo(metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_UploadVideoResponse__Output>): grpc.ClientWritableStream<_service_UploadVideoRequest>;
+  UploadVideo(metadata: grpc.Metadata, callback: grpc.requestCallback<_service_UploadVideoResponse__Output>): grpc.ClientWritableStream<_service_UploadVideoRequest>;
+  UploadVideo(options: grpc.CallOptions, callback: grpc.requestCallback<_service_UploadVideoResponse__Output>): grpc.ClientWritableStream<_service_UploadVideoRequest>;
+  UploadVideo(callback: grpc.requestCallback<_service_UploadVideoResponse__Output>): grpc.ClientWritableStream<_service_UploadVideoRequest>;
+  uploadVideo(metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_UploadVideoResponse__Output>): grpc.ClientWritableStream<_service_UploadVideoRequest>;
+  uploadVideo(metadata: grpc.Metadata, callback: grpc.requestCallback<_service_UploadVideoResponse__Output>): grpc.ClientWritableStream<_service_UploadVideoRequest>;
+  uploadVideo(options: grpc.CallOptions, callback: grpc.requestCallback<_service_UploadVideoResponse__Output>): grpc.ClientWritableStream<_service_UploadVideoRequest>;
+  uploadVideo(callback: grpc.requestCallback<_service_UploadVideoResponse__Output>): grpc.ClientWritableStream<_service_UploadVideoRequest>;
+  
 }
 
 export interface MainHandlers extends grpc.UntypedServiceImplementation {
+  BackgroundVideos: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_BackgroundVideosResponse>;
+  
   CheckTwitchDevCredentials: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_DevCredentials>;
   
   CheckTwitchStreamKey: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_TwitchStreamKey>;
@@ -206,6 +248,8 @@ export interface MainHandlers extends grpc.UntypedServiceImplementation {
   CreateSongPlaylist: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_SongPlaylist>;
   
   CurrentSongPlaylist: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_SongPlaylist>;
+  
+  DeleteBackgroundVideo: grpc.handleUnaryCall<_service_BackgroundVideo__Output, _google_protobuf_Empty>;
   
   DeleteTwitchDevCredentials: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _google_protobuf_Empty>;
   
@@ -233,19 +277,25 @@ export interface MainHandlers extends grpc.UntypedServiceImplementation {
   
   StopStream: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _google_protobuf_Empty>;
   
+  SwapBackgroundVideo: grpc.handleUnaryCall<_service_BackgroundVideo__Output, _google_protobuf_Empty>;
+  
   TwitchAccessToken: grpc.handleUnaryCall<_service_UserAuth__Output, _google_protobuf_Empty>;
   
   TwitchSaveStreamKey: grpc.handleUnaryCall<_service_TwitchStreamKey__Output, _google_protobuf_Empty>;
   
   UpdateSongPlaylist: grpc.handleUnaryCall<_service_SongPlaylist__Output, _google_protobuf_Empty>;
   
+  UploadVideo: grpc.handleClientStreamingCall<_service_UploadVideoRequest__Output, _service_UploadVideoResponse>;
+  
 }
 
 export interface MainDefinition extends grpc.ServiceDefinition {
+  BackgroundVideos: MethodDefinition<_google_protobuf_Empty, _service_BackgroundVideosResponse, _google_protobuf_Empty__Output, _service_BackgroundVideosResponse__Output>
   CheckTwitchDevCredentials: MethodDefinition<_google_protobuf_Empty, _service_DevCredentials, _google_protobuf_Empty__Output, _service_DevCredentials__Output>
   CheckTwitchStreamKey: MethodDefinition<_google_protobuf_Empty, _service_TwitchStreamKey, _google_protobuf_Empty__Output, _service_TwitchStreamKey__Output>
   CreateSongPlaylist: MethodDefinition<_google_protobuf_Empty, _service_SongPlaylist, _google_protobuf_Empty__Output, _service_SongPlaylist__Output>
   CurrentSongPlaylist: MethodDefinition<_google_protobuf_Empty, _service_SongPlaylist, _google_protobuf_Empty__Output, _service_SongPlaylist__Output>
+  DeleteBackgroundVideo: MethodDefinition<_service_BackgroundVideo, _google_protobuf_Empty, _service_BackgroundVideo__Output, _google_protobuf_Empty__Output>
   DeleteTwitchDevCredentials: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
   DeleteTwitchStreamKey: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
   FindNewSongsNCS: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
@@ -259,7 +309,9 @@ export interface MainDefinition extends grpc.ServiceDefinition {
   StatusNCS: MethodDefinition<_google_protobuf_Empty, _service_StatusNCSResponse, _google_protobuf_Empty__Output, _service_StatusNCSResponse__Output>
   StopOutput: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
   StopStream: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
+  SwapBackgroundVideo: MethodDefinition<_service_BackgroundVideo, _google_protobuf_Empty, _service_BackgroundVideo__Output, _google_protobuf_Empty__Output>
   TwitchAccessToken: MethodDefinition<_service_UserAuth, _google_protobuf_Empty, _service_UserAuth__Output, _google_protobuf_Empty__Output>
   TwitchSaveStreamKey: MethodDefinition<_service_TwitchStreamKey, _google_protobuf_Empty, _service_TwitchStreamKey__Output, _google_protobuf_Empty__Output>
   UpdateSongPlaylist: MethodDefinition<_service_SongPlaylist, _google_protobuf_Empty, _service_SongPlaylist__Output, _google_protobuf_Empty__Output>
+  UploadVideo: MethodDefinition<_service_UploadVideoRequest, _service_UploadVideoResponse, _service_UploadVideoRequest__Output, _service_UploadVideoResponse__Output>
 }

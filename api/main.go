@@ -81,6 +81,11 @@ func checkDatabase() error {
 		log.Fatalln(err)
 	}
 
+	err = os.MkdirAll("files/stream/background-videos", 0744)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	err = os.MkdirAll("files/stream/alerts", 0744)
 	if err != nil {
 		log.Fatalln(err)
@@ -140,6 +145,18 @@ func checkDatabase() error {
 			width INTEGER,
 			height INTEGER,
 			fps INTEGER
+		)
+	`)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		CREATE TABLE background_videos (
+			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			active BOOLEAN NOT NULL CHECK (active IN (0, 1))
 		)
 	`)
 

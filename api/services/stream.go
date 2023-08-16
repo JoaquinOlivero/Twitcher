@@ -7,8 +7,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -40,16 +42,18 @@ type Song struct {
 
 type MainServer struct {
 	pb.UnimplementedMainServer
-	playlist        pb.SongPlaylist
-	currentSong     pb.Song
-	previewCount    int
-	overlays        []OverlayObject
-	mu              sync.Mutex
-	audioOn         bool
-	outputOn        bool
-	streamOn        bool
-	findingOn       bool
-	sendChannelData chan string
+	playlist               pb.SongPlaylist
+	currentSong            pb.Song
+	currentBackgroundVideo pb.BackgroundVideo
+	previewCount           int
+	overlays               []OverlayObject
+	mu                     sync.Mutex
+	audioOn                bool
+	outputOn               bool
+	streamOn               bool
+	findingOn              bool
+	swapBackgroundVideo    chan struct{}
+	sendChannelData        chan string
 	// receiveChannelData chan string
 	sdpFromClientChan chan string
 	sdpForClientChan  chan string
@@ -258,6 +262,7 @@ func (s *MainServer) Output(wg *sync.WaitGroup, mode string) error {
 	}
 
 	s.mu.Lock()
+	s.swapBackgroundVideo = make(chan struct{})
 	s.sendChannelData = make(chan string, 10)
 	s.sdpFromClientChan = make(chan string, 300)
 	s.sdpForClientChan = make(chan string, 300)
@@ -277,6 +282,17 @@ func (s *MainServer) Output(wg *sync.WaitGroup, mode string) error {
 
 	// Background video go routine.
 	go func() {
+		db, err := sql.Open("sqlite3", "data.db")
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		err = db.QueryRow("SELECT id, name, active FROM background_videos WHERE active=1").Scan(&s.currentBackgroundVideo.Id, &s.currentBackgroundVideo.Name, &s.currentBackgroundVideo.Active)
+		if err != nil {
+			log.Println(err)
+		}
+		db.Close()
+
 		for {
 			exitRoutine := make(chan struct{})
 
@@ -284,7 +300,7 @@ func (s *MainServer) Output(wg *sync.WaitGroup, mode string) error {
 				"-hide_banner",
 				"-y",
 				"-re",
-				"-i", "files/stream/test.mp4",
+				"-i", "files/stream/background-videos/"+s.currentBackgroundVideo.Name,
 				"-c:v", "copy",
 				"-an",
 				"-f", "h264", "-",
@@ -305,6 +321,8 @@ func (s *MainServer) Output(wg *sync.WaitGroup, mode string) error {
 						}
 
 						break outer
+					case <-s.swapBackgroundVideo:
+						cmd.Process.Signal(syscall.SIGKILL)
 					case <-exitRoutine:
 						break outer
 					}
@@ -351,7 +369,6 @@ func (s *MainServer) Output(wg *sync.WaitGroup, mode string) error {
 	cmd.Start()
 
 	// webRTC connection
-	// go s.Broadcast(s.sdpFromClientChan, s.sdpForClientChan, exitBrChan)
 	go s.Broadcast(s.sdpFromClientChan, s.sdpForClientChan, s.stopOutputChan)
 
 	// This go routine handles the stdout ("pipe:1") from the ffmpeg instance depending if it is needed for a preview in the web or a livestream.
@@ -556,6 +573,7 @@ func (s *MainServer) StartStream(ctx context.Context, in *google_protobuf.Empty)
 		ingestLink,
 	)
 
+	cmd.Stderr = os.Stderr
 	cmd.Stdin = sr
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
@@ -652,6 +670,168 @@ func (s *MainServer) GetOverlays(ctx context.Context, in *google_protobuf.Empty)
 	}
 
 	return &pb.Overlays{Overlays: overlays}, nil
+}
+
+func (s *MainServer) BackgroundVideos(ctx context.Context, in *google_protobuf.Empty) (*pb.BackgroundVideosResponse, error) {
+	var videos []*pb.BackgroundVideo
+
+	db, err := sql.Open("sqlite3", "data.db")
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT id, name, active FROM background_videos")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var video pb.BackgroundVideo
+
+		err = rows.Scan(&video.Id, &video.Name, &video.Active)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+
+		videos = append(videos, &pb.BackgroundVideo{Id: video.Id, Name: video.Name, Active: video.Active})
+	}
+
+	// get any error encountered during iteration
+	err = rows.Err()
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return &pb.BackgroundVideosResponse{Videos: videos}, nil
+}
+
+func (s *MainServer) SwapBackgroundVideo(ctx context.Context, in *pb.BackgroundVideo) (*google_protobuf.Empty, error) {
+	s.mu.Lock()
+	s.currentBackgroundVideo = *in
+	s.mu.Unlock()
+
+	db, err := sql.Open("sqlite3", "data.db")
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer db.Close()
+
+	_, err = db.Exec("UPDATE background_videos SET active = 0 WHERE active = 1")
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = db.Exec("UPDATE background_videos SET active = 1 WHERE id = $1", in.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	if s.outputOn {
+		s.swapBackgroundVideo <- struct{}{}
+	}
+
+	return &google_protobuf.Empty{}, nil
+}
+
+func (s *MainServer) UploadVideo(stream pb.Main_UploadVideoServer) error {
+	var (
+		file     *os.File
+		fileName string
+	)
+
+	defer file.Close()
+
+	i := 0
+
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			// Create tables
+			db, err := sql.Open("sqlite3", "data.db")
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+
+			defer db.Close()
+			_, err = db.Exec(`
+				INSERT INTO background_videos (name, active) VALUES ($1, 0)
+			`, fileName)
+			if err != nil {
+				return err
+			}
+
+			return stream.SendAndClose(&pb.UploadVideoResponse{Id: 1})
+		}
+		if err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		if i == 0 {
+			fileName = req.GetInfo().GetFileName()
+
+			file, err = os.OpenFile("files/stream/background-videos/"+fileName, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0744)
+			if err != nil {
+				file.Close()
+				if errors.Is(err, fs.ErrExist) {
+					log.Println(fileName + " already exists.")
+					return status.Error(codes.AlreadyExists, err.Error())
+				}
+
+				return err
+			}
+
+			i += 1
+		} else {
+			_, err = file.Write(req.GetChunk())
+			if err != nil {
+				return status.Error(codes.Internal, err.Error())
+			}
+		}
+	}
+
+}
+
+func (s *MainServer) DeleteBackgroundVideo(ctx context.Context, in *pb.BackgroundVideo) (*google_protobuf.Empty, error) {
+
+	if s.outputOn && s.currentBackgroundVideo.Id == in.Id {
+		return &google_protobuf.Empty{}, status.Errorf(
+			codes.FailedPrecondition,
+			fmt.Sprintln("Can't delete active background video while preview and/or stream are on."),
+		)
+	}
+
+	db, err := sql.Open("sqlite3", "data.db")
+	if err != nil {
+		log.Println(err)
+		return &google_protobuf.Empty{}, err
+	}
+
+	defer db.Close()
+
+	if in.Active {
+		_, err := db.Exec("UPDATE background_videos SET active = 1 WHERE id != $1 LIMIT 1", in.Id)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	_, err = db.Exec("DELETE FROM background_videos WHERE id = $1", in.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.Remove("files/stream/background-videos/" + in.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	return &google_protobuf.Empty{}, nil
 }
 
 // This function is required in CreateSongPlaylist() and Audio()

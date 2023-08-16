@@ -19,6 +19,7 @@ service Main {
     rpc StartOutput (OutputRequest) returns (OutputResponse) {};
     rpc StopOutput (google.protobuf.Empty) returns (google.protobuf.Empty) {};
     rpc Status (google.protobuf.Empty) returns (StatusResponse) {};
+    rpc SwapBackgroundVideo (BackgroundVideo) returns (google.protobuf.Empty) {};
 
     rpc FindNewSongsNCS (google.protobuf.Empty) returns (google.protobuf.Empty) {};
     rpc StatusNCS (google.protobuf.Empty) returns (StatusNCSResponse) {};
@@ -32,6 +33,10 @@ service Main {
     rpc TwitchAccessToken (UserAuth) returns (google.protobuf.Empty) {};
 
     rpc GetOverlays (google.protobuf.Empty) returns (Overlays) {};
+
+    rpc BackgroundVideos (google.protobuf.Empty) returns (BackgroundVideosResponse) {};
+    rpc UploadVideo (stream UploadVideoRequest) returns (UploadVideoResponse) {};
+    rpc DeleteBackgroundVideo (BackgroundVideo) returns (google.protobuf.Empty) {};
 }
 
 message Song {
@@ -107,4 +112,31 @@ message Overlay {
 
 message Overlays {
     repeated Overlay overlays = 1;
+}
+
+message BackgroundVideo {
+    string name = 1;
+    int32 id = 2;
+    bool active = 3;
+}
+
+message BackgroundVideosResponse {
+    repeated BackgroundVideo videos = 1;
+}
+
+message VideoInfo {
+    string fileName = 1;
+    string type = 2;
+    string size = 3;
+}
+
+message UploadVideoRequest {
+    oneof data {
+      VideoInfo info = 1;
+      bytes chunk = 2;
+    };
+}
+
+message UploadVideoResponse {
+    int32 id = 1;
 }
