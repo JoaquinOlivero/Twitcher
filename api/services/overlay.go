@@ -99,8 +99,8 @@ func (s *MainServer) changeSongOverlay(send bool) {
 		log.Fatalln(err)
 	}
 
-	if send && s.previewCount > 0 {
-		s.sendChannelData <- string(b)
+	if send && len(s.sendOverlayDataChannel) == 0 {
+		s.sendOverlayDataChannel <- string(b)
 	}
 
 	// Save the new image to a file

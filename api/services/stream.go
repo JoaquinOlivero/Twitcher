@@ -45,7 +45,6 @@ type MainServer struct {
 	playlist               pb.SongPlaylist
 	currentSong            pb.Song
 	currentBackgroundVideo pb.BackgroundVideo
-	previewCount           int
 	overlays               []OverlayObject
 	mu                     sync.Mutex
 	audioOn                bool
@@ -53,7 +52,7 @@ type MainServer struct {
 	streamOn               bool
 	findingOn              bool
 	swapBackgroundVideo    chan struct{}
-	sendChannelData        chan string
+	sendOverlayDataChannel chan string
 	// receiveChannelData chan string
 	sdpFromClientChan chan string
 	sdpForClientChan  chan string
@@ -233,8 +232,6 @@ func (s *MainServer) StartOutput(ctx context.Context, in *pb.OutputRequest) (*pb
 		)
 	}
 
-	s.previewCount += 1
-
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -263,7 +260,7 @@ func (s *MainServer) Output(wg *sync.WaitGroup, mode string) error {
 
 	s.mu.Lock()
 	s.swapBackgroundVideo = make(chan struct{})
-	s.sendChannelData = make(chan string, 10)
+	s.sendOverlayDataChannel = make(chan string, 1)
 	s.sdpFromClientChan = make(chan string, 300)
 	s.sdpForClientChan = make(chan string, 300)
 	s.stopOutputChan = make(chan struct{})
@@ -465,8 +462,6 @@ func (s *MainServer) Preview(ctx context.Context, in *pb.SDP) (*pb.SDP, error) {
 			fmt.Sprintln("audio or output video not available to show preview"),
 		)
 	}
-
-	s.previewCount += 1
 
 	s.sdpFromClientChan <- in.Sdp
 
