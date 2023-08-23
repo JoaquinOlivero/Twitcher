@@ -429,7 +429,7 @@ func (s *MainServer) UploadVideo(stream pb.Main_UploadVideoServer) error {
 }
 
 func (s *MainServer) DeleteBackgroundVideo(ctx context.Context, in *pb.BackgroundVideo) (*google_protobuf.Empty, error) {
-	if s.status.preview || s.status.stream && s.currentBackgroundVideo.Id == in.Id {
+	if s.status.preview && s.currentBackgroundVideo.Id == in.Id || s.status.stream && s.currentBackgroundVideo.Id == in.Id {
 		return &google_protobuf.Empty{}, status.Errorf(
 			codes.FailedPrecondition,
 			fmt.Sprintln("Can't delete active background video while preview and/or stream are on."),
@@ -487,7 +487,7 @@ func (s *MainServer) initPreview(r *io.PipeReader, wg *sync.WaitGroup) error {
 	defer log.Println("preview stopped")
 
 	cmd := exec.Command("ffmpeg", "-hide_banner", "-y",
-		"-re",
+		"-r", strconv.Itoa(s.streamParams.fps),
 		"-stream_loop", "-1",
 		"-i", "pipe:0",
 		"-i", "files/stream/audio",
@@ -537,13 +537,18 @@ func (s *MainServer) initPreview(r *io.PipeReader, wg *sync.WaitGroup) error {
 func (s *MainServer) initStream(r *io.PipeReader, twitchStreamLink string, exitAlerts chan<- struct{}, wg *sync.WaitGroup) error {
 	defer log.Println("stream stopped")
 
+	// scaling filter
+	w := strconv.Itoa(s.streamParams.width)
+	h := strconv.Itoa(s.streamParams.height)
+	sf := fmt.Sprintf(`w=min(iw*%v/ih\,%v):h=min(%v\,ih*%v/iw),pad=w=%v:h=%v:x=(%v-iw)/2:y=(%v-ih)/2`, h, w, h, w, w, h, w, h)
+
 	cmd := exec.Command("ffmpeg", "-hide_banner", "-y",
-		"-re",
+		"-r", strconv.Itoa(s.streamParams.fps),
 		"-stream_loop", "-1",
 		"-i", "pipe:0",
-		"-thread_queue_size", "256", "-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
+		"-thread_queue_size", "128", "-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
 		"-thread_queue_size", "8", "-i", "files/stream/alert",
-		"-filter_complex", `[0][1]overlay=0:0[v1];[v1][2]overlay=W-w+10:H-h+60,zmq[vout]`,
+		"-filter_complex", `[0]scale=`+sf+`[v1];[v1][1]overlay=0:0[v2];[v2][2]overlay=W-w+10:H-h+60[v3];[v3]zmq[vout]`,
 		"-i", "files/stream/audio",
 
 		"-map", "3:0",
@@ -564,8 +569,7 @@ func (s *MainServer) initStream(r *io.PipeReader, twitchStreamLink string, exitA
 		"-g", strconv.Itoa(s.streamParams.fps*2),
 		"-keyint_min", strconv.Itoa(s.streamParams.fps*2), "-force_key_frames", "expr:gte(t,n_forced*2)",
 		"-flvflags", "no_duration_filesize",
-		// twitchStreamLink,
-		"/dev/null",
+		twitchStreamLink,
 	)
 
 	cmd.Stdin = r
@@ -639,7 +643,6 @@ func (s *MainServer) initAudio(wg *sync.WaitGroup) error {
 		go s.changeSongOverlay(true)
 
 		cmd := exec.Command("ffmpeg", "-y",
-			"-re",
 			"-i", "files/songs/"+s.currentSong.Audio,
 			"-c:a", "copy",
 			"-f", "ogg", "files/stream/audio",
@@ -714,7 +717,6 @@ func (s *MainServer) initBackgroundVideo(w *io.PipeWriter, wg *sync.WaitGroup) e
 		cmd := exec.Command("ffmpeg",
 			"-hide_banner",
 			"-y",
-			"-r", strconv.Itoa(s.streamParams.fps),
 			"-stream_loop", "-1",
 			"-i", "files/stream/background-videos/"+s.currentBackgroundVideo.Name,
 			"-c:v", "copy",
