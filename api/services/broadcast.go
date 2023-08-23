@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log"
+	"math"
 	"os"
 	"time"
 
@@ -72,7 +73,7 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 	// like NACK this needs to be called.
 	go func(stop <-chan struct{}) {
 		defer log.Println("closing video rtcp")
-		rtcpBuf := make([]byte, 3000)
+		rtcpBuf := make([]byte, 1500)
 
 	outer:
 		for {
@@ -109,9 +110,10 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 		// It is important to use a time.Ticker instead of time.Sleep because
 		// * avoids accumulating skew, just calling time.Sleep didn't compensate for the time spent parsing the data
 		// * works around latency issues with Sleep (see https://github.com/golang/go/issues/44343)
-		h264FrameDuration := time.Duration((1 / float64(s.streamParams.fps)) * 1000)
+		h264FrameDuration := math.Round((float64(1) / float64(s.streamParams.fps)) * 1000)
 		spsAndPpsCache := []byte{}
-		ticker := time.NewTicker(h264FrameDuration)
+		ticker := time.NewTicker(time.Duration(h264FrameDuration * float64(time.Millisecond)))
+
 	outer:
 		for ; true; <-ticker.C {
 			select {
@@ -161,7 +163,7 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 	// like NACK this needs to be called.
 	go func(stop <-chan struct{}) {
 		defer log.Println("closing audio rtcp")
-		rtcpBuf := make([]byte, 3000)
+		rtcpBuf := make([]byte, 1500)
 
 	outer:
 		for {
