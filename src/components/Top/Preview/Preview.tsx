@@ -228,6 +228,7 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
 
         return () => {
             if (isPreviewLoaded) fabricRef.current!.dispose();
+            fabricRef.current = null
         }
     }, [isPreviewLoaded])
 
