@@ -487,7 +487,7 @@ func (s *MainServer) initPreview(r *io.PipeReader, wg *sync.WaitGroup) error {
 	defer log.Println("preview stopped")
 
 	cmd := exec.Command("ffmpeg", "-hide_banner", "-y",
-		"-r", strconv.Itoa(s.streamParams.fps),
+		"-re",
 		"-stream_loop", "-1",
 		"-i", "pipe:0",
 		"-i", "files/stream/audio",
@@ -538,10 +538,10 @@ func (s *MainServer) initStream(r *io.PipeReader, twitchStreamLink string, exitA
 	defer log.Println("stream stopped")
 
 	cmd := exec.Command("ffmpeg", "-hide_banner", "-y",
-		"-r", strconv.Itoa(s.streamParams.fps),
+		"-re",
 		"-stream_loop", "-1",
 		"-i", "pipe:0",
-		"-thread_queue_size", "8", "-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
+		"-thread_queue_size", "256", "-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
 		"-thread_queue_size", "8", "-i", "files/stream/alert",
 		"-filter_complex", `[0][1]overlay=0:0[v1];[v1][2]overlay=W-w+10:H-h+60,zmq[vout]`,
 		"-i", "files/stream/audio",
@@ -564,8 +564,8 @@ func (s *MainServer) initStream(r *io.PipeReader, twitchStreamLink string, exitA
 		"-g", strconv.Itoa(s.streamParams.fps*2),
 		"-keyint_min", strconv.Itoa(s.streamParams.fps*2), "-force_key_frames", "expr:gte(t,n_forced*2)",
 		"-flvflags", "no_duration_filesize",
-		twitchStreamLink,
-		// "/dev/null",
+		// twitchStreamLink,
+		"/dev/null",
 	)
 
 	cmd.Stdin = r
@@ -714,7 +714,7 @@ func (s *MainServer) initBackgroundVideo(w *io.PipeWriter, wg *sync.WaitGroup) e
 		cmd := exec.Command("ffmpeg",
 			"-hide_banner",
 			"-y",
-			"-re",
+			"-r", strconv.Itoa(s.streamParams.fps),
 			"-stream_loop", "-1",
 			"-i", "files/stream/background-videos/"+s.currentBackgroundVideo.Name,
 			"-c:v", "copy",
@@ -824,14 +824,20 @@ func (s *MainServer) manageDataChannelMessage(msg []byte) {
 			log.Fatalf("could not dial: %v", err)
 		}
 
-		err = req.Send(zmq4.NewMsgString("volume@foo volume " + body.Volume))
-		if err != nil {
-			log.Fatalf("could not send command: %v", err)
-		}
-
 		volume, err := strconv.ParseFloat(body.Volume, 64)
 		if err != nil {
 			log.Fatalln(err)
+		}
+
+		zmqVolume := fmt.Sprintf("volume@foo volume %f", volume)
+
+		if volume > s.streamParams.volume {
+			zmqVolume = fmt.Sprintf("volume@foo volume %f", volume+1)
+		}
+
+		err = req.Send(zmq4.NewMsgString(zmqVolume))
+		if err != nil {
+			log.Fatalf("could not send command: %v", err)
 		}
 
 		s.streamParams.volume = volume

@@ -754,6 +754,8 @@ export const getStreamParams = async () => {
         if (res.volume === 101) {
             res.volume = 0
         }
+
+        res.volume = Math.round(res.volume! * 100)
     }
 
     return res
