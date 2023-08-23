@@ -37,8 +37,7 @@ const NCS = () => {
                     width="1/3"
                     disabled={isFinding}
                     isWaiting={isFinding}
-                    backgroundColor="bg-blue-600/30"
-                    backgroundColorHover="bg-blue-600/60"
+                    backgroundColor="bg-primary"
                     onClick={() => findNewSongs(true, false)}
                 />
                 {isFinding &&

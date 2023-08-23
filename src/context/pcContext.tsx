@@ -6,7 +6,7 @@ import * as fabric from 'fabric'; // v6
 
 type DataChannelMsg = {
     type: string
-    message: Overlay | {}
+    message: Overlay | string | {}
 }
 
 type Overlay = {
@@ -42,6 +42,7 @@ type PCContextType = {
     fabricRef: MutableRefObject<fabric.Canvas | null>;
     videoElementSize: VideoElementSize | null;
     setVideoElementSize: Dispatch<SetStateAction<VideoElementSize | null>>
+    streamBitrate: string | null
 }
 
 const PCContextDefaultValue: PCContextType = {
@@ -55,6 +56,7 @@ const PCContextDefaultValue: PCContextType = {
     fabricRef: null!,
     videoElementSize: null,
     setVideoElementSize: () => { },
+    streamBitrate: null,
 }
 
 export const PCContext = createContext<PCContextType>(PCContextDefaultValue)
@@ -73,6 +75,7 @@ export default function PCProvider({ children }: Props) {
     const [dataChan, setDataChan] = useState<RTCDataChannel | null>(null)
     const [isPreviewLoaded, setIsPreviewLoaded] = useState<boolean>(false)
     const [videoElementSize, setVideoElementSize] = useState<VideoElementSize | null>(null)
+    const [streamBitrate, setStreamBitrate] = useState<string | null>(null)
     const fabricRef = useRef<fabric.Canvas | null>(null);
 
     const newPc = async () => {
@@ -81,7 +84,6 @@ export default function PCProvider({ children }: Props) {
         if (data && data.overlays) {
             setOverlays(data.overlays as Overlay[])
         }
-
 
         let pc = new RTCPeerConnection({
             iceServers: [{
@@ -105,6 +107,7 @@ export default function PCProvider({ children }: Props) {
         dc.onmessage = (event) => {
             const data: DataChannelMsg = JSON.parse(event.data)
             if (data.type === "overlay") setOverlays(data.message as Overlay[])
+            if (data.type === "stream_bitrate") setStreamBitrate(data.message as string)
         }
     }
 
@@ -124,7 +127,8 @@ export default function PCProvider({ children }: Props) {
         setIsPreviewLoaded,
         fabricRef,
         videoElementSize,
-        setVideoElementSize
+        setVideoElementSize,
+        streamBitrate
     };
 
     return <PCContext.Provider value={value}>{children}</PCContext.Provider>

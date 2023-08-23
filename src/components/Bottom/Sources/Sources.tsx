@@ -3,10 +3,13 @@
 import { deleteBgVideo, getBgVideos, swapBgVideo, uploadVideoFile } from "@/actions";
 import Modal from "@/components/Modal/Modal";
 import ActionButton from "@/components/Utils/ActionButton";
+import { debounce } from "@/components/Utils/debounce";
+import { delay } from "@/components/Utils/delay";
 import { usePC } from "@/context/pcContext";
 import { BackgroundVideo__Output } from "@/pb/service/BackgroundVideo";
 import { BackgroundVideosResponse__Output } from "@/pb/service/BackgroundVideosResponse";
-import { useEffect, useRef, useState } from "react";
+import { BaseFabricObject } from "fabric/*";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Overlay = {
     id: string
@@ -81,7 +84,7 @@ const Sources = ({ bgVideos }: Props) => {
                         </svg>
                     </div>
 
-                    <div className="transition hidden bg-background p-1 font-semibold text-sm tracking-wider flex flex-col gap-1">
+                    <div className="transition hidden bg-background p-1 font-semibold text-sm tracking-wider">
                         {Overlays &&
                             Overlays.map((o) => {
                                 return <OverlayObject object={o} key={o.id} />
@@ -97,7 +100,7 @@ const Sources = ({ bgVideos }: Props) => {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                         </svg>
                     </div>
-                    <div className="transition hidden bg-background p-1 font-semibold text-sm tracking-wider flex flex-col gap-1">
+                    <div className="transition hidden bg-background p-1 font-semibold text-sm tracking-wider">
                         <BackgroundVideos bgVideos={bgVideos} />
                     </div>
                 </div>
@@ -309,8 +312,7 @@ const OverlayObject = ({ object }: OverlayObjectProps) => {
                 obj.left = (value / 720) * videoElementSize.height
                 obj.setCoords()
                 fabricRef.current.renderAll()
-                // @ts-ignore
-                obj.fire("modified", { "target": obj })
+                debouncedTrigger(obj, "modified")
             }
         }
     }
@@ -328,8 +330,7 @@ const OverlayObject = ({ object }: OverlayObjectProps) => {
                 obj.top = (value / 1280) * videoElementSize.width
                 obj.setCoords()
                 fabricRef.current.renderAll()
-                // @ts-ignore
-                obj.fire("modified", { "target": obj })
+                debouncedTrigger(obj, "modified")
             }
         }
     }
@@ -353,8 +354,7 @@ const OverlayObject = ({ object }: OverlayObjectProps) => {
                 } else {
                     obj.set("width", (videoElementSize.width / 1280) * value)
                     fabricRef.current.renderAll()
-                    // @ts-ignore
-                    obj.fire("resizing", { "target": obj })
+                    debouncedTrigger(obj, "resizing")
                 }
 
             }
@@ -373,8 +373,7 @@ const OverlayObject = ({ object }: OverlayObjectProps) => {
             if (obj) {
                 obj.set("textAlign", value)
                 fabricRef.current.renderAll()
-                // @ts-ignore
-                obj.fire("modified", { "target": obj })
+                debouncedTrigger(obj, "modified")
             }
         }
     }
@@ -392,11 +391,20 @@ const OverlayObject = ({ object }: OverlayObjectProps) => {
             if (obj) {
                 obj.set("fill", `rgb(${rgb})`)
                 fabricRef.current.renderAll()
-                // @ts-ignore
-                obj.fire("modified", { "target": obj })
+                debouncedTrigger(obj, "modified")
             }
         }
     }
+
+
+    const debouncedTrigger = useMemo(() =>
+        debounce((obj: BaseFabricObject, action: string) => {
+            // @ts-ignore
+            obj.fire(action, { "target": obj })
+        }, 300),
+        []
+    )
+
 
     const handleFontSize = (value: number) => {
         if (!value) {
@@ -534,8 +542,4 @@ function hexToRgb(hex: string) {
         return [(c >> 16) & 255] + ' ' + [(c >> 8) & 255] + ' ' + [c & 255];
     }
     throw new Error('Bad Hex');
-}
-
-function delay(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
 }

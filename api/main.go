@@ -142,9 +142,11 @@ func checkDatabase() error {
 			access_token TEXT,
 			refresh_token TEXT,
 			stream_key TEXT,
-			width INTEGER,
-			height INTEGER,
-			fps INTEGER
+			preset TEXT CHECK (preset IN ("ultrafast", "superfast", "veryfast", "faster","fast", "medium", "slow", "slower", "veryslow")) DEFAULT "medium",
+			width INTEGER DEFAULT 1280,
+    		height INTEGER DEFAULT 720,
+    		fps INTEGER DEFAULT 25,
+			volume REAL DEFAULT 0.50
 		)
 	`)
 

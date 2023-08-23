@@ -24,11 +24,10 @@ const (
 	Main_CurrentSongPlaylist_FullMethodName        = "/service.Main/CurrentSongPlaylist"
 	Main_UpdateSongPlaylist_FullMethodName         = "/service.Main/UpdateSongPlaylist"
 	Main_Preview_FullMethodName                    = "/service.Main/Preview"
+	Main_StartPreview_FullMethodName               = "/service.Main/StartPreview"
+	Main_StopPreview_FullMethodName                = "/service.Main/StopPreview"
 	Main_StartStream_FullMethodName                = "/service.Main/StartStream"
 	Main_StopStream_FullMethodName                 = "/service.Main/StopStream"
-	Main_StartAudio_FullMethodName                 = "/service.Main/StartAudio"
-	Main_StartOutput_FullMethodName                = "/service.Main/StartOutput"
-	Main_StopOutput_FullMethodName                 = "/service.Main/StopOutput"
 	Main_Status_FullMethodName                     = "/service.Main/Status"
 	Main_SwapBackgroundVideo_FullMethodName        = "/service.Main/SwapBackgroundVideo"
 	Main_FindNewSongsNCS_FullMethodName            = "/service.Main/FindNewSongsNCS"
@@ -40,6 +39,7 @@ const (
 	Main_CheckTwitchDevCredentials_FullMethodName  = "/service.Main/CheckTwitchDevCredentials"
 	Main_DeleteTwitchDevCredentials_FullMethodName = "/service.Main/DeleteTwitchDevCredentials"
 	Main_TwitchAccessToken_FullMethodName          = "/service.Main/TwitchAccessToken"
+	Main_StreamParameters_FullMethodName           = "/service.Main/StreamParameters"
 	Main_GetOverlays_FullMethodName                = "/service.Main/GetOverlays"
 	Main_BackgroundVideos_FullMethodName           = "/service.Main/BackgroundVideos"
 	Main_UploadVideo_FullMethodName                = "/service.Main/UploadVideo"
@@ -54,11 +54,10 @@ type MainClient interface {
 	CurrentSongPlaylist(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*SongPlaylist, error)
 	UpdateSongPlaylist(ctx context.Context, in *SongPlaylist, opts ...grpc.CallOption) (*empty.Empty, error)
 	Preview(ctx context.Context, in *SDP, opts ...grpc.CallOption) (*SDP, error)
-	StartStream(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error)
-	StopStream(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error)
-	StartAudio(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*AudioResponse, error)
-	StartOutput(ctx context.Context, in *OutputRequest, opts ...grpc.CallOption) (*OutputResponse, error)
-	StopOutput(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error)
+	StartPreview(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StatusResponse, error)
+	StopPreview(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StatusResponse, error)
+	StartStream(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StreamResponse, error)
+	StopStream(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StatusResponse, error)
 	Status(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StatusResponse, error)
 	SwapBackgroundVideo(ctx context.Context, in *BackgroundVideo, opts ...grpc.CallOption) (*empty.Empty, error)
 	FindNewSongsNCS(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error)
@@ -70,6 +69,7 @@ type MainClient interface {
 	CheckTwitchDevCredentials(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*DevCredentials, error)
 	DeleteTwitchDevCredentials(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error)
 	TwitchAccessToken(ctx context.Context, in *UserAuth, opts ...grpc.CallOption) (*empty.Empty, error)
+	StreamParameters(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StreamParametersResponse, error)
 	GetOverlays(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Overlays, error)
 	BackgroundVideos(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*BackgroundVideosResponse, error)
 	UploadVideo(ctx context.Context, opts ...grpc.CallOption) (Main_UploadVideoClient, error)
@@ -120,8 +120,26 @@ func (c *mainClient) Preview(ctx context.Context, in *SDP, opts ...grpc.CallOpti
 	return out, nil
 }
 
-func (c *mainClient) StartStream(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
+func (c *mainClient) StartPreview(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
+	err := c.cc.Invoke(ctx, Main_StartPreview_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mainClient) StopPreview(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
+	err := c.cc.Invoke(ctx, Main_StopPreview_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mainClient) StartStream(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StreamResponse, error) {
+	out := new(StreamResponse)
 	err := c.cc.Invoke(ctx, Main_StartStream_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -129,36 +147,9 @@ func (c *mainClient) StartStream(ctx context.Context, in *empty.Empty, opts ...g
 	return out, nil
 }
 
-func (c *mainClient) StopStream(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
+func (c *mainClient) StopStream(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
 	err := c.cc.Invoke(ctx, Main_StopStream_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *mainClient) StartAudio(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*AudioResponse, error) {
-	out := new(AudioResponse)
-	err := c.cc.Invoke(ctx, Main_StartAudio_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *mainClient) StartOutput(ctx context.Context, in *OutputRequest, opts ...grpc.CallOption) (*OutputResponse, error) {
-	out := new(OutputResponse)
-	err := c.cc.Invoke(ctx, Main_StartOutput_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *mainClient) StopOutput(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, Main_StopOutput_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -264,6 +255,15 @@ func (c *mainClient) TwitchAccessToken(ctx context.Context, in *UserAuth, opts .
 	return out, nil
 }
 
+func (c *mainClient) StreamParameters(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StreamParametersResponse, error) {
+	out := new(StreamParametersResponse)
+	err := c.cc.Invoke(ctx, Main_StreamParameters_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *mainClient) GetOverlays(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Overlays, error) {
 	out := new(Overlays)
 	err := c.cc.Invoke(ctx, Main_GetOverlays_FullMethodName, in, out, opts...)
@@ -333,11 +333,10 @@ type MainServer interface {
 	CurrentSongPlaylist(context.Context, *empty.Empty) (*SongPlaylist, error)
 	UpdateSongPlaylist(context.Context, *SongPlaylist) (*empty.Empty, error)
 	Preview(context.Context, *SDP) (*SDP, error)
-	StartStream(context.Context, *empty.Empty) (*empty.Empty, error)
-	StopStream(context.Context, *empty.Empty) (*empty.Empty, error)
-	StartAudio(context.Context, *empty.Empty) (*AudioResponse, error)
-	StartOutput(context.Context, *OutputRequest) (*OutputResponse, error)
-	StopOutput(context.Context, *empty.Empty) (*empty.Empty, error)
+	StartPreview(context.Context, *empty.Empty) (*StatusResponse, error)
+	StopPreview(context.Context, *empty.Empty) (*StatusResponse, error)
+	StartStream(context.Context, *empty.Empty) (*StreamResponse, error)
+	StopStream(context.Context, *empty.Empty) (*StatusResponse, error)
 	Status(context.Context, *empty.Empty) (*StatusResponse, error)
 	SwapBackgroundVideo(context.Context, *BackgroundVideo) (*empty.Empty, error)
 	FindNewSongsNCS(context.Context, *empty.Empty) (*empty.Empty, error)
@@ -349,6 +348,7 @@ type MainServer interface {
 	CheckTwitchDevCredentials(context.Context, *empty.Empty) (*DevCredentials, error)
 	DeleteTwitchDevCredentials(context.Context, *empty.Empty) (*empty.Empty, error)
 	TwitchAccessToken(context.Context, *UserAuth) (*empty.Empty, error)
+	StreamParameters(context.Context, *empty.Empty) (*StreamParametersResponse, error)
 	GetOverlays(context.Context, *empty.Empty) (*Overlays, error)
 	BackgroundVideos(context.Context, *empty.Empty) (*BackgroundVideosResponse, error)
 	UploadVideo(Main_UploadVideoServer) error
@@ -372,20 +372,17 @@ func (UnimplementedMainServer) UpdateSongPlaylist(context.Context, *SongPlaylist
 func (UnimplementedMainServer) Preview(context.Context, *SDP) (*SDP, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Preview not implemented")
 }
-func (UnimplementedMainServer) StartStream(context.Context, *empty.Empty) (*empty.Empty, error) {
+func (UnimplementedMainServer) StartPreview(context.Context, *empty.Empty) (*StatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StartPreview not implemented")
+}
+func (UnimplementedMainServer) StopPreview(context.Context, *empty.Empty) (*StatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StopPreview not implemented")
+}
+func (UnimplementedMainServer) StartStream(context.Context, *empty.Empty) (*StreamResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartStream not implemented")
 }
-func (UnimplementedMainServer) StopStream(context.Context, *empty.Empty) (*empty.Empty, error) {
+func (UnimplementedMainServer) StopStream(context.Context, *empty.Empty) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopStream not implemented")
-}
-func (UnimplementedMainServer) StartAudio(context.Context, *empty.Empty) (*AudioResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method StartAudio not implemented")
-}
-func (UnimplementedMainServer) StartOutput(context.Context, *OutputRequest) (*OutputResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method StartOutput not implemented")
-}
-func (UnimplementedMainServer) StopOutput(context.Context, *empty.Empty) (*empty.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method StopOutput not implemented")
 }
 func (UnimplementedMainServer) Status(context.Context, *empty.Empty) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
@@ -419,6 +416,9 @@ func (UnimplementedMainServer) DeleteTwitchDevCredentials(context.Context, *empt
 }
 func (UnimplementedMainServer) TwitchAccessToken(context.Context, *UserAuth) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method TwitchAccessToken not implemented")
+}
+func (UnimplementedMainServer) StreamParameters(context.Context, *empty.Empty) (*StreamParametersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StreamParameters not implemented")
 }
 func (UnimplementedMainServer) GetOverlays(context.Context, *empty.Empty) (*Overlays, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOverlays not implemented")
@@ -517,6 +517,42 @@ func _Main_Preview_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Main_StartPreview_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(empty.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MainServer).StartPreview(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Main_StartPreview_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MainServer).StartPreview(ctx, req.(*empty.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Main_StopPreview_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(empty.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MainServer).StopPreview(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Main_StopPreview_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MainServer).StopPreview(ctx, req.(*empty.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Main_StartStream_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(empty.Empty)
 	if err := dec(in); err != nil {
@@ -549,60 +585,6 @@ func _Main_StopStream_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MainServer).StopStream(ctx, req.(*empty.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Main_StartAudio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MainServer).StartAudio(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Main_StartAudio_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MainServer).StartAudio(ctx, req.(*empty.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Main_StartOutput_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(OutputRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MainServer).StartOutput(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Main_StartOutput_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MainServer).StartOutput(ctx, req.(*OutputRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Main_StopOutput_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MainServer).StopOutput(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Main_StopOutput_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MainServer).StopOutput(ctx, req.(*empty.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -805,6 +787,24 @@ func _Main_TwitchAccessToken_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Main_StreamParameters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(empty.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MainServer).StreamParameters(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Main_StreamParameters_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MainServer).StreamParameters(ctx, req.(*empty.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Main_GetOverlays_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(empty.Empty)
 	if err := dec(in); err != nil {
@@ -909,24 +909,20 @@ var Main_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Main_Preview_Handler,
 		},
 		{
+			MethodName: "StartPreview",
+			Handler:    _Main_StartPreview_Handler,
+		},
+		{
+			MethodName: "StopPreview",
+			Handler:    _Main_StopPreview_Handler,
+		},
+		{
 			MethodName: "StartStream",
 			Handler:    _Main_StartStream_Handler,
 		},
 		{
 			MethodName: "StopStream",
 			Handler:    _Main_StopStream_Handler,
-		},
-		{
-			MethodName: "StartAudio",
-			Handler:    _Main_StartAudio_Handler,
-		},
-		{
-			MethodName: "StartOutput",
-			Handler:    _Main_StartOutput_Handler,
-		},
-		{
-			MethodName: "StopOutput",
-			Handler:    _Main_StopOutput_Handler,
 		},
 		{
 			MethodName: "Status",
@@ -971,6 +967,10 @@ var Main_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "TwitchAccessToken",
 			Handler:    _Main_TwitchAccessToken_Handler,
+		},
+		{
+			MethodName: "StreamParameters",
+			Handler:    _Main_StreamParameters_Handler,
 		},
 		{
 			MethodName: "GetOverlays",

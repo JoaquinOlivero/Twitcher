@@ -49,10 +49,7 @@ type OverlayObject struct {
 }
 
 func (s *MainServer) changeSongOverlay(send bool) {
-	resWidth := 1280
-	resHeight := 720
-
-	bg := image.NewRGBA(image.Rect(0, 0, resWidth, resHeight))
+	bg := image.NewRGBA(image.Rect(0, 0, s.streamParams.width, s.streamParams.height))
 
 	c := NewOverlay(bg)
 
@@ -99,8 +96,8 @@ func (s *MainServer) changeSongOverlay(send bool) {
 		log.Fatalln(err)
 	}
 
-	if send && len(s.sendOverlayDataChannel) == 0 {
-		s.sendOverlayDataChannel <- string(b)
+	if send && len(s.channels.sendOverlayDataChannel) == 0 {
+		s.channels.sendOverlayDataChannel <- string(b)
 	}
 
 	// Save the new image to a file
@@ -145,6 +142,8 @@ func (s *MainServer) InitOverlay() error {
 	if err != nil {
 		return err
 	}
+
+	defer db.Close()
 
 	var coverSettings OverlayObject
 	err = db.QueryRow("SELECT id, type, width, height, point_x, point_y, show FROM overlays WHERE id='cover'").Scan(

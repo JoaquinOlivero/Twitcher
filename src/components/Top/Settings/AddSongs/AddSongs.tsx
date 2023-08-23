@@ -49,13 +49,13 @@ const AddSongs = () => {
                         <>
                             <div className="text-center opacity-85 text-xl font-semibold uppercase tracking-wider">add songs</div>
                             <div className="flex h-full w-full gap-5 items-center justify-center">
-                                <div onClick={() => showNcs()} className="text-center bg-blue-600/30 w-1/5 py-1.5 rounded font-semibold tracking-wider capitalize cursor-pointer transition hover:bg-blue-600/60">
+                                <div onClick={() => showNcs()} className="text-center bg-primary w-1/5 py-1.5 rounded font-semibold tracking-wider capitalize cursor-pointer">
                                     <span>NCS</span>
                                 </div>
-                                <div onClick={() => showSoundCloud()} className="text-center bg-blue-600/30 w-1/5 py-1.5 rounded font-semibold tracking-wider capitalize cursor-pointer transition hover:bg-blue-600/60">
+                                <div onClick={() => showSoundCloud()} className="text-center bg-primary w-1/5 py-1.5 rounded font-semibold tracking-wider capitalize cursor-pointer">
                                     <span>SoundCloud</span>
                                 </div>
-                                <div onClick={() => showUploadFile()} className="text-center bg-blue-600/30 w-1/5 py-1.5 rounded font-semibold tracking-wider capitalize cursor-pointer transition hover:bg-blue-600/60">
+                                <div onClick={() => showUploadFile()} className="text-center bg-primary w-1/5 py-1.5 rounded font-semibold tracking-wider capitalize cursor-pointer">
                                     <span>Upload file</span>
                                 </div>
                             </div>

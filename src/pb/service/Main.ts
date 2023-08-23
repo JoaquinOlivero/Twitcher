@@ -2,18 +2,17 @@
 
 import type * as grpc from '@grpc/grpc-js'
 import type { MethodDefinition } from '@grpc/proto-loader'
-import type { AudioResponse as _service_AudioResponse, AudioResponse__Output as _service_AudioResponse__Output } from '../service/AudioResponse';
 import type { BackgroundVideo as _service_BackgroundVideo, BackgroundVideo__Output as _service_BackgroundVideo__Output } from '../service/BackgroundVideo';
 import type { BackgroundVideosResponse as _service_BackgroundVideosResponse, BackgroundVideosResponse__Output as _service_BackgroundVideosResponse__Output } from '../service/BackgroundVideosResponse';
 import type { DevCredentials as _service_DevCredentials, DevCredentials__Output as _service_DevCredentials__Output } from '../service/DevCredentials';
 import type { Empty as _google_protobuf_Empty, Empty__Output as _google_protobuf_Empty__Output } from '../google/protobuf/Empty';
-import type { OutputRequest as _service_OutputRequest, OutputRequest__Output as _service_OutputRequest__Output } from '../service/OutputRequest';
-import type { OutputResponse as _service_OutputResponse, OutputResponse__Output as _service_OutputResponse__Output } from '../service/OutputResponse';
 import type { Overlays as _service_Overlays, Overlays__Output as _service_Overlays__Output } from '../service/Overlays';
 import type { SDP as _service_SDP, SDP__Output as _service_SDP__Output } from '../service/SDP';
 import type { SongPlaylist as _service_SongPlaylist, SongPlaylist__Output as _service_SongPlaylist__Output } from '../service/SongPlaylist';
 import type { StatusNCSResponse as _service_StatusNCSResponse, StatusNCSResponse__Output as _service_StatusNCSResponse__Output } from '../service/StatusNCSResponse';
 import type { StatusResponse as _service_StatusResponse, StatusResponse__Output as _service_StatusResponse__Output } from '../service/StatusResponse';
+import type { StreamParametersResponse as _service_StreamParametersResponse, StreamParametersResponse__Output as _service_StreamParametersResponse__Output } from '../service/StreamParametersResponse';
+import type { StreamResponse as _service_StreamResponse, StreamResponse__Output as _service_StreamResponse__Output } from '../service/StreamResponse';
 import type { TwitchStreamKey as _service_TwitchStreamKey, TwitchStreamKey__Output as _service_TwitchStreamKey__Output } from '../service/TwitchStreamKey';
 import type { UploadVideoRequest as _service_UploadVideoRequest, UploadVideoRequest__Output as _service_UploadVideoRequest__Output } from '../service/UploadVideoRequest';
 import type { UploadVideoResponse as _service_UploadVideoResponse, UploadVideoResponse__Output as _service_UploadVideoResponse__Output } from '../service/UploadVideoResponse';
@@ -128,32 +127,23 @@ export interface MainClient extends grpc.Client {
   saveTwitchDevCredentials(argument: _service_DevCredentials, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   saveTwitchDevCredentials(argument: _service_DevCredentials, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   
-  StartAudio(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_AudioResponse__Output>): grpc.ClientUnaryCall;
-  StartAudio(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_AudioResponse__Output>): grpc.ClientUnaryCall;
-  StartAudio(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_AudioResponse__Output>): grpc.ClientUnaryCall;
-  StartAudio(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_AudioResponse__Output>): grpc.ClientUnaryCall;
-  startAudio(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_AudioResponse__Output>): grpc.ClientUnaryCall;
-  startAudio(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_AudioResponse__Output>): grpc.ClientUnaryCall;
-  startAudio(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_AudioResponse__Output>): grpc.ClientUnaryCall;
-  startAudio(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_AudioResponse__Output>): grpc.ClientUnaryCall;
+  StartPreview(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  StartPreview(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  StartPreview(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  StartPreview(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  startPreview(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  startPreview(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  startPreview(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  startPreview(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
   
-  StartOutput(argument: _service_OutputRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_OutputResponse__Output>): grpc.ClientUnaryCall;
-  StartOutput(argument: _service_OutputRequest, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_OutputResponse__Output>): grpc.ClientUnaryCall;
-  StartOutput(argument: _service_OutputRequest, options: grpc.CallOptions, callback: grpc.requestCallback<_service_OutputResponse__Output>): grpc.ClientUnaryCall;
-  StartOutput(argument: _service_OutputRequest, callback: grpc.requestCallback<_service_OutputResponse__Output>): grpc.ClientUnaryCall;
-  startOutput(argument: _service_OutputRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_OutputResponse__Output>): grpc.ClientUnaryCall;
-  startOutput(argument: _service_OutputRequest, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_OutputResponse__Output>): grpc.ClientUnaryCall;
-  startOutput(argument: _service_OutputRequest, options: grpc.CallOptions, callback: grpc.requestCallback<_service_OutputResponse__Output>): grpc.ClientUnaryCall;
-  startOutput(argument: _service_OutputRequest, callback: grpc.requestCallback<_service_OutputResponse__Output>): grpc.ClientUnaryCall;
-  
-  StartStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  StartStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  StartStream(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  StartStream(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  startStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  startStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  startStream(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  startStream(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  StartStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StreamResponse__Output>): grpc.ClientUnaryCall;
+  StartStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_StreamResponse__Output>): grpc.ClientUnaryCall;
+  StartStream(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StreamResponse__Output>): grpc.ClientUnaryCall;
+  StartStream(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_StreamResponse__Output>): grpc.ClientUnaryCall;
+  startStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StreamResponse__Output>): grpc.ClientUnaryCall;
+  startStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_StreamResponse__Output>): grpc.ClientUnaryCall;
+  startStream(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StreamResponse__Output>): grpc.ClientUnaryCall;
+  startStream(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_StreamResponse__Output>): grpc.ClientUnaryCall;
   
   Status(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
   Status(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
@@ -173,23 +163,32 @@ export interface MainClient extends grpc.Client {
   statusNcs(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StatusNCSResponse__Output>): grpc.ClientUnaryCall;
   statusNcs(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_StatusNCSResponse__Output>): grpc.ClientUnaryCall;
   
-  StopOutput(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  StopOutput(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  StopOutput(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  StopOutput(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  stopOutput(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  stopOutput(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  stopOutput(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  stopOutput(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  StopPreview(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  StopPreview(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  StopPreview(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  StopPreview(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  stopPreview(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  stopPreview(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  stopPreview(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  stopPreview(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
   
-  StopStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  StopStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  StopStream(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  StopStream(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  stopStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  stopStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  stopStream(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
-  stopStream(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  StopStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  StopStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  StopStream(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  StopStream(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  stopStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  stopStream(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  stopStream(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  stopStream(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_StatusResponse__Output>): grpc.ClientUnaryCall;
+  
+  StreamParameters(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StreamParametersResponse__Output>): grpc.ClientUnaryCall;
+  StreamParameters(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_StreamParametersResponse__Output>): grpc.ClientUnaryCall;
+  StreamParameters(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StreamParametersResponse__Output>): grpc.ClientUnaryCall;
+  StreamParameters(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_StreamParametersResponse__Output>): grpc.ClientUnaryCall;
+  streamParameters(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StreamParametersResponse__Output>): grpc.ClientUnaryCall;
+  streamParameters(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_StreamParametersResponse__Output>): grpc.ClientUnaryCall;
+  streamParameters(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_StreamParametersResponse__Output>): grpc.ClientUnaryCall;
+  streamParameters(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_StreamParametersResponse__Output>): grpc.ClientUnaryCall;
   
   SwapBackgroundVideo(argument: _service_BackgroundVideo, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   SwapBackgroundVideo(argument: _service_BackgroundVideo, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
@@ -263,19 +262,19 @@ export interface MainHandlers extends grpc.UntypedServiceImplementation {
   
   SaveTwitchDevCredentials: grpc.handleUnaryCall<_service_DevCredentials__Output, _google_protobuf_Empty>;
   
-  StartAudio: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_AudioResponse>;
+  StartPreview: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_StatusResponse>;
   
-  StartOutput: grpc.handleUnaryCall<_service_OutputRequest__Output, _service_OutputResponse>;
-  
-  StartStream: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _google_protobuf_Empty>;
+  StartStream: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_StreamResponse>;
   
   Status: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_StatusResponse>;
   
   StatusNCS: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_StatusNCSResponse>;
   
-  StopOutput: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _google_protobuf_Empty>;
+  StopPreview: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_StatusResponse>;
   
-  StopStream: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _google_protobuf_Empty>;
+  StopStream: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_StatusResponse>;
+  
+  StreamParameters: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_StreamParametersResponse>;
   
   SwapBackgroundVideo: grpc.handleUnaryCall<_service_BackgroundVideo__Output, _google_protobuf_Empty>;
   
@@ -302,13 +301,13 @@ export interface MainDefinition extends grpc.ServiceDefinition {
   GetOverlays: MethodDefinition<_google_protobuf_Empty, _service_Overlays, _google_protobuf_Empty__Output, _service_Overlays__Output>
   Preview: MethodDefinition<_service_SDP, _service_SDP, _service_SDP__Output, _service_SDP__Output>
   SaveTwitchDevCredentials: MethodDefinition<_service_DevCredentials, _google_protobuf_Empty, _service_DevCredentials__Output, _google_protobuf_Empty__Output>
-  StartAudio: MethodDefinition<_google_protobuf_Empty, _service_AudioResponse, _google_protobuf_Empty__Output, _service_AudioResponse__Output>
-  StartOutput: MethodDefinition<_service_OutputRequest, _service_OutputResponse, _service_OutputRequest__Output, _service_OutputResponse__Output>
-  StartStream: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
+  StartPreview: MethodDefinition<_google_protobuf_Empty, _service_StatusResponse, _google_protobuf_Empty__Output, _service_StatusResponse__Output>
+  StartStream: MethodDefinition<_google_protobuf_Empty, _service_StreamResponse, _google_protobuf_Empty__Output, _service_StreamResponse__Output>
   Status: MethodDefinition<_google_protobuf_Empty, _service_StatusResponse, _google_protobuf_Empty__Output, _service_StatusResponse__Output>
   StatusNCS: MethodDefinition<_google_protobuf_Empty, _service_StatusNCSResponse, _google_protobuf_Empty__Output, _service_StatusNCSResponse__Output>
-  StopOutput: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
-  StopStream: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
+  StopPreview: MethodDefinition<_google_protobuf_Empty, _service_StatusResponse, _google_protobuf_Empty__Output, _service_StatusResponse__Output>
+  StopStream: MethodDefinition<_google_protobuf_Empty, _service_StatusResponse, _google_protobuf_Empty__Output, _service_StatusResponse__Output>
+  StreamParameters: MethodDefinition<_google_protobuf_Empty, _service_StreamParametersResponse, _google_protobuf_Empty__Output, _service_StreamParametersResponse__Output>
   SwapBackgroundVideo: MethodDefinition<_service_BackgroundVideo, _google_protobuf_Empty, _service_BackgroundVideo__Output, _google_protobuf_Empty__Output>
   TwitchAccessToken: MethodDefinition<_service_UserAuth, _google_protobuf_Empty, _service_UserAuth__Output, _google_protobuf_Empty__Output>
   TwitchSaveStreamKey: MethodDefinition<_service_TwitchStreamKey, _google_protobuf_Empty, _service_TwitchStreamKey__Output, _google_protobuf_Empty__Output>

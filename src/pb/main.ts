@@ -19,8 +19,6 @@ export interface ProtoGrpcType {
     BackgroundVideosResponse: MessageTypeDefinition
     DevCredentials: MessageTypeDefinition
     Main: SubtypeConstructor<typeof grpc.Client, _service_MainClient> & { service: _service_MainDefinition }
-    OutputRequest: MessageTypeDefinition
-    OutputResponse: MessageTypeDefinition
     Overlay: MessageTypeDefinition
     Overlays: MessageTypeDefinition
     SDP: MessageTypeDefinition
@@ -28,6 +26,8 @@ export interface ProtoGrpcType {
     SongPlaylist: MessageTypeDefinition
     StatusNCSResponse: MessageTypeDefinition
     StatusResponse: MessageTypeDefinition
+    StreamParametersResponse: MessageTypeDefinition
+    StreamResponse: MessageTypeDefinition
     TwitchStreamKey: MessageTypeDefinition
     UploadVideoRequest: MessageTypeDefinition
     UploadVideoResponse: MessageTypeDefinition

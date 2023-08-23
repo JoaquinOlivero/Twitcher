@@ -12,10 +12,6 @@ import (
 	"github.com/pion/webrtc/v3/pkg/media/h264reader"
 )
 
-const (
-	h264FrameDuration = time.Millisecond * 25
-)
-
 func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel chan<- string, exit <-chan struct{}) {
 	stop := make(chan struct{})
 	defer log.Println("closing broadcast func")
@@ -76,7 +72,7 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 	// like NACK this needs to be called.
 	go func(stop <-chan struct{}) {
 		defer log.Println("closing video rtcp")
-		rtcpBuf := make([]byte, 1500)
+		rtcpBuf := make([]byte, 3000)
 
 	outer:
 		for {
@@ -113,6 +109,7 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 		// It is important to use a time.Ticker instead of time.Sleep because
 		// * avoids accumulating skew, just calling time.Sleep didn't compensate for the time spent parsing the data
 		// * works around latency issues with Sleep (see https://github.com/golang/go/issues/44343)
+		h264FrameDuration := time.Duration((1 / float64(s.streamParams.fps)) * 1000)
 		spsAndPpsCache := []byte{}
 		ticker := time.NewTicker(h264FrameDuration)
 	outer:
@@ -164,7 +161,7 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 	// like NACK this needs to be called.
 	go func(stop <-chan struct{}) {
 		defer log.Println("closing audio rtcp")
-		rtcpBuf := make([]byte, 1500)
+		rtcpBuf := make([]byte, 3000)
 
 	outer:
 		for {
@@ -198,8 +195,7 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 		// It is important to use a time.Ticker instead of time.Sleep because
 		// * avoids accumulating skew, just calling time.Sleep didn't compensate for the time spent parsing the data
 		// * works around latency issues with Sleep (see https://github.com/golang/go/issues/44343)
-		// oggPageDuration := time.Microsecond * 1000
-		oggPageDuration := time.Millisecond * 20
+		oggPageDuration := time.Microsecond * 2000
 		ticker := time.NewTicker(oggPageDuration)
 
 	outer:
@@ -242,7 +238,14 @@ func (s *MainServer) Broadcast(sdpFromClient <-chan string, sdpForClientChannel 
 					log.Println("exit data channel for loop")
 					d.Close()
 					break outer
-				case cover := <-s.sendOverlayDataChannel:
+				case msg := <-s.channels.sendMsgDataChannel:
+					// Send message when new song starts playing.
+					err := d.SendText(msg)
+					if err != nil {
+						d.Close()
+						break outer
+					}
+				case cover := <-s.channels.sendOverlayDataChannel:
 					// Send message when new song starts playing.
 					err := d.SendText(cover)
 					if err != nil {
@@ -354,7 +357,7 @@ outer:
 			// Before these packets are returned they are processed by interceptors. For things
 			// like NACK this needs to be called.
 			go func(stop <-chan struct{}) {
-				rtcpBuf := make([]byte, 1500)
+				rtcpBuf := make([]byte, 3000)
 
 			outer:
 				for {
@@ -381,7 +384,7 @@ outer:
 			// Before these packets are returned they are processed by interceptors. For things
 			// like NACK this needs to be called.
 			go func(stop <-chan struct{}) {
-				rtcpBuf := make([]byte, 1500)
+				rtcpBuf := make([]byte, 3000)
 
 			outer:
 				for {
@@ -411,7 +414,14 @@ outer:
 							log.Println("exit data channel for loop")
 							d.Close()
 							break outer
-						case cover := <-s.sendOverlayDataChannel:
+						case msg := <-s.channels.sendMsgDataChannel:
+							// Send message when new song starts playing.
+							err := d.SendText(msg)
+							if err != nil {
+								d.Close()
+								break outer
+							}
+						case cover := <-s.channels.sendOverlayDataChannel:
 							// Send message when new song starts playing.
 							err := d.SendText(cover)
 							if err != nil {

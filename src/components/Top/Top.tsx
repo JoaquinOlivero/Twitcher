@@ -9,25 +9,22 @@ import { TwitchStreamKey__Output } from "@/pb/service/TwitchStreamKey";
 import { DevCredentials__Output } from "@/pb/service/DevCredentials";
 import { checkStatus } from "@/actions";
 import { usePC } from "@/context/pcContext";
+import { StreamParametersResponse__Output } from "@/pb/service/StreamParametersResponse";
 
 type Props = {
     status: StatusResponse__Output | undefined
     statusStreamKey: TwitchStreamKey__Output | undefined
     twitchCredentials: DevCredentials__Output | undefined
+    streamParams: StreamParametersResponse__Output | undefined
 }
 
-type VideoElementSize = {
-    width: number
-    height: number
-}
-
-const Top = ({ status, statusStreamKey, twitchCredentials }: Props) => {
-    const { setIsPreviewLoaded, videoElementSize, setVideoElementSize } = usePC();
+const Top = ({ status, statusStreamKey, twitchCredentials, streamParams }: Props) => {
+    const { setIsPreviewLoaded, setVideoElementSize } = usePC();
     const vRef = useRef<HTMLDivElement>(null)
     const [streamStatus, setStreamStatus] = useState<StatusResponse__Output | undefined>(status)
     const [muted, setMuted] = useState<boolean>(typeof window !== 'undefined' && localStorage.getItem("volume") != null && Number(localStorage.getItem("volume")) == 0 ? true : false)
     const [volume, setVolume] = useState<number>(typeof window !== 'undefined' && localStorage.getItem("volume") != null ? Number(localStorage.getItem("volume")) : 10)
-    const [prevVolume, setPrevVolume] = useState<number>(10)
+    const [prevVolume, setPrevVolume] = useState<number>(typeof window !== 'undefined' && localStorage.getItem("volume") != null ? Number(localStorage.getItem("volume")) : 10)
 
     const addVideoElement = (event: RTCTrackEvent) => {
         if (event.track.kind === "video" && vRef.current) {
@@ -36,7 +33,10 @@ const Top = ({ status, statusStreamKey, twitchCredentials }: Props) => {
             const video: HTMLVideoElement | null = document.createElement("video")
             video.srcObject = event.streams[0]
             video.autoplay = true
-            video.volume = volume / 100
+            video.muted = true
+            setMuted(true)
+            setVolume(0)
+
             video.onloadeddata = function () {
                 const boundingClient = video.getBoundingClientRect()
                 setVideoElementSize({ width: boundingClient.width, height: boundingClient.height })
@@ -110,7 +110,6 @@ const Top = ({ status, statusStreamKey, twitchCredentials }: Props) => {
 
     return (
         <>
-
             <div className="w-[99%] h-full flex mx-auto gap-2">
                 <Settings statusStreamKey={statusStreamKey} twitchCredentials={twitchCredentials} />
                 <Preview
@@ -120,12 +119,14 @@ const Top = ({ status, statusStreamKey, twitchCredentials }: Props) => {
                     handleVolume={handleVolume}
                     muted={muted}
                     volume={volume}
+                    streamParams={streamParams}
                     ref={vRef}
                 />
                 <Controls
                     status={streamStatus}
                     addVideoElement={addVideoElement}
                     removeVideoElement={removeVideoElement}
+                    streamVolume={streamParams?.volume}
                 />
             </div>
         </>

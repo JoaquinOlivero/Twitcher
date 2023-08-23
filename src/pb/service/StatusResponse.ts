@@ -2,13 +2,13 @@
 
 
 export interface StatusResponse {
-  'output'?: (boolean);
+  'preview'?: (boolean);
   'audio'?: (boolean);
   'stream'?: (boolean);
 }
 
 export interface StatusResponse__Output {
-  'output'?: (boolean);
+  'preview'?: (boolean);
   'audio'?: (boolean);
   'stream'?: (boolean);
 }

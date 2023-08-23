@@ -1,9 +1,10 @@
 'use client';
-import { enablePreview, getOverlays } from "@/actions";
+import { enablePreview } from "@/actions";
 import { usePC } from "@/context/pcContext";
 import { StatusResponse__Output } from "@/pb/service/StatusResponse";
 import { forwardRef, useEffect, useRef } from "react";
 import * as fabric from 'fabric'; // v6
+import { StreamParametersResponse__Output } from "@/pb/service/StreamParametersResponse";
 var FontFaceObserver = require('fontfaceobserver');
 
 type Overlay = {
@@ -30,13 +31,14 @@ type Props = {
     handleVolume: (value: number) => void
     muted: boolean
     volume: number
+    streamParams: StreamParametersResponse__Output | undefined
 }
 
 export type Ref = HTMLDivElement;
 
 const Preview = forwardRef<Ref, Props>((props, vRef) => {
-    const { newPc, Overlays, setOverlays, sendMsg, isPreviewLoaded, fabricRef, videoElementSize } = usePC();
-    const { status, addVideoElement, muted, handleSoundMuting, volume, handleVolume } = props
+    const { newPc, Overlays, sendMsg, isPreviewLoaded, fabricRef, videoElementSize } = usePC();
+    const { status, addVideoElement, handleSoundMuting, handleVolume, muted, volume, streamParams } = props
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const showPreview = async () => {
@@ -75,28 +77,20 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
         }
     }
 
-    const initOverlays = async () => {
-        const data = await getOverlays()
-        if (data && data.overlays) {
-            setOverlays(data.overlays as Overlay[])
-        }
-    }
-
-
     const addTextbox = async (o: Overlay) => {
         var ffamily = o.fontFamily.substring(0, o.fontFamily.lastIndexOf(".")).toLowerCase()
         var myfont = new FontFaceObserver(ffamily)
         await myfont.load()
 
-        if (isPreviewLoaded && videoElementSize) {
+        if (isPreviewLoaded && videoElementSize && streamParams) {
             const textbox = new fabric.Textbox(o.text, {
                 id: o.id,
-                width: (videoElementSize.width / 1280) * o.width,
-                top: (o.pointY / 1280) * videoElementSize.width, // Stream width resolution = 1280px.
-                left: (o.pointX / 720) * videoElementSize.height, // Stream height resolution = 720px.
+                width: (videoElementSize.width / streamParams.width!) * o.width,
+                top: (o.pointY / streamParams.width!) * videoElementSize.width,
+                left: (o.pointX / streamParams.height!) * videoElementSize.height,
                 lockScalingFlip: true,
                 lockRotation: true,
-                fontSize: (videoElementSize.width / 1280) * o.fontSize,
+                fontSize: (videoElementSize.width / streamParams.width!) * o.fontSize,
                 lineHeight: o.lineHeight,
                 fill: `rgb(${o.textColor})`,
                 editable: false,
@@ -118,7 +112,7 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
 
             textbox.on("resizing", () => {
                 const width = textbox.width
-                const actualWidth = (width / videoElementSize.width) * 1280
+                const actualWidth = (width / videoElementSize.width) * streamParams.width!
 
                 o.width = actualWidth
 
@@ -133,13 +127,13 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
             textbox.on("modified", (options) => {
                 const pointX = options.target.getCoords()[0].x
                 const pointY = options.target.getCoords()[0].y
-                const actualPointX = Math.round((pointX / videoElementSize.width) * 1280)
-                const actualPointY = Math.round((pointY / videoElementSize.height) * 720)
+                const actualPointX = Math.round((pointX / videoElementSize.width) * streamParams.width!)
+                const actualPointY = Math.round((pointY / videoElementSize.height) * streamParams.height!)
 
                 o.pointX = Math.round(actualPointX)
                 o.pointY = Math.round(actualPointY)
 
-                o.fontSize = Math.round((textbox.fontSize / videoElementSize.width) * 1280)
+                o.fontSize = Math.round((textbox.fontSize / videoElementSize.width) * streamParams.width!)
                 o.textColor = textbox.fill?.toString().replaceAll("rgb", "").replaceAll("(", "").replaceAll(")", "") as string
                 o.textAlign = textbox.textAlign
 
@@ -157,19 +151,17 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
     }
 
     const addCoverImage = (o: Overlay) => {
-        if (isPreviewLoaded && videoElementSize) {
+        if (isPreviewLoaded && videoElementSize && streamParams) {
             var imgObj = new Image();
             imgObj.src = `/api/covers/${o.coverId}`;
             imgObj.onload = () => {
                 var image = new fabric.Image(imgObj);
-                // Stream width resolution = 1280px
-                image.scaleToWidth((videoElementSize.width / 1280) * o.width)
-                // Stream height resolution = 720px.
-                image.scaleToHeight((videoElementSize.height / 720) * o.height)
+                image.scaleToWidth((videoElementSize.width / streamParams.width!) * o.width)
+                image.scaleToHeight((videoElementSize.height / streamParams.height!) * o.height)
                 image.set({
                     id: o.id,
-                    top: (o.pointY / 1280) * videoElementSize.width, // Stream width resolution = 1280px.
-                    left: (o.pointX / 720) * videoElementSize.height, // Stream height resolution = 720px.
+                    top: (o.pointY / streamParams.width!) * videoElementSize.width,
+                    left: (o.pointX / streamParams.height!) * videoElementSize.height,
                     lockScalingFlip: true,
                     lockRotation: true,
                     objectCaching: false,
@@ -187,16 +179,16 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
                 image.on("modified", (options) => {
                     const pointX = options.target.getCoords()[0].x
                     const pointY = options.target.getCoords()[0].y
-                    const actualPointX = Math.round((pointX / videoElementSize.width) * 1280)
-                    const actualPointY = Math.round((pointY / videoElementSize.height) * 720)
+                    const actualPointX = Math.round((pointX / videoElementSize.width) * streamParams.width!)
+                    const actualPointY = Math.round((pointY / videoElementSize.height) * streamParams.height!)
 
                     o.pointX = Math.round(actualPointX)
                     o.pointY = Math.round(actualPointY)
 
                     const scaledWidth = options.target.width * options.target.scaleX
                     const scaledHeight = options.target.height * options.target.scaleY
-                    const actualWidth = (scaledWidth / videoElementSize.width) * 1280
-                    const actualHeight = (scaledHeight / videoElementSize.height) * 720
+                    const actualWidth = (scaledWidth / videoElementSize.width) * streamParams.width!
+                    const actualHeight = (scaledHeight / videoElementSize.height) * streamParams.height!
 
                     o.width = actualWidth
                     o.height = actualHeight
@@ -215,13 +207,13 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
     };
 
     useEffect(() => {
-        if (status && status.output) {
+        if (status && status.preview || status && status.stream) {
             showPreview()
         }
     }, [])
 
     useEffect(() => {
-        if (isPreviewLoaded && videoElementSize) {
+        if (isPreviewLoaded && videoElementSize && !fabricRef.current) {
             const initFabric = () => {
                 fabricRef.current = new fabric.Canvas(canvasRef.current!, {
                     width: videoElementSize.width,
@@ -240,8 +232,8 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
     }, [isPreviewLoaded])
 
     useEffect(() => {
-        if (Overlays) {
-            if (fabricRef.current && Overlays) {
+        if (Overlays && isPreviewLoaded) {
+            if (fabricRef.current) {
                 var i = 0
                 while (i < Overlays.length) {
                     switch (Overlays[i].id) {
@@ -260,7 +252,6 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
                             const textbox = fabricRef.current.getObjects().find(obj => (obj as any).id === Overlays[i].id) as fabric.Textbox
                             if (textbox) {
                                 textbox.set("text", Overlays[i].text)
-                                fabricRef.current.requestRenderAll()
                             } else {
                                 addTextbox(Overlays[i])
                             }
@@ -268,18 +259,17 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
                     }
                     i++
                 }
-            } else {
-                initOverlays()
+                fabricRef.current.renderAll()
             }
         }
-    }, [Overlays])
+    }, [Overlays, isPreviewLoaded])
 
 
     return (
         <div className="w-1/2 h-full mx-auto relative">
             <div className="bg-foreground w-full h-full z-0 rounded-b-xl">
                 <div className="flex justify-center items-center bg-foreground w-full h-full z-0 rounded-b-xl">
-                    {!isPreviewLoaded && status && status.output &&
+                    {!isPreviewLoaded && status && status.preview || !isPreviewLoaded && status && status.stream &&
                         <div className="flex justify-center items-center gap-2">
                             <span className="font-semibold tracking-wider capitalize text-white">loading preview</span>
                             <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -292,7 +282,7 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
             </div>
 
             {/* Controls */}
-            <div className="absolute bottom-1 left-0 z-10 w-[98%] left-1/2 transform -translate-x-1/2 text-white flex items-end">
+            <div className="absolute bottom-1 z-10 w-[98%] left-1/2 transform -translate-x-1/2 text-white flex items-end">
                 {isPreviewLoaded &&
                     <div className="flex items-center gap-x-1">
                         <button onClick={() => handleSoundMuting()} className="z-3">

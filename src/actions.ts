@@ -12,7 +12,9 @@ import { TwitchStreamKey__Output } from './pb/service/TwitchStreamKey';
 import { DevCredentials__Output } from './pb/service/DevCredentials';
 import { Overlays__Output } from './pb/service/Overlays';
 import { BackgroundVideosResponse__Output } from './pb/service/BackgroundVideosResponse';
-import { BackgroundVideo, BackgroundVideo__Output } from './pb/service/BackgroundVideo';
+import { BackgroundVideo } from './pb/service/BackgroundVideo';
+import { StreamResponse__Output } from './pb/service/StreamResponse';
+import { StreamParametersResponse__Output } from './pb/service/StreamParametersResponse';
 
 const PROTO_FILE = "../proto/main.proto"
 
@@ -108,26 +110,20 @@ export const updateSongPlaylist = async (songs: SongPlaylist__Output) => {
 }
 
 export const enablePreview = async (clientSdp: string) => {
-
-
-    await startAudio()
-
-    await startOutput("preview")
-
     const deadline = new Date()
     deadline.setSeconds(deadline.getSeconds() + 5)
 
     const serverSdp: string = await new Promise<string>(resolve => {
         client.waitForReady(deadline, (err) => {
             if (err) {
-                // console.log(err)
+                console.log(err)
                 resolve(err.message)
                 return err.message
             }
 
             client.Preview({ sdp: clientSdp }, (err, res) => {
                 if (err) {
-                    // console.log(err)
+                    console.log(err)
                     resolve(err.message)
                     return err.message
                 }
@@ -147,113 +143,124 @@ export const enablePreview = async (clientSdp: string) => {
 
 
 export const startStream = async () => {
-
-    await startAudio()
-
-    await startOutput("stream")
-
     const deadline = new Date()
     deadline.setSeconds(deadline.getSeconds() + 5)
 
-    client.waitForReady(deadline, (err) => {
-        if (err) {
-            // console.log(err)
-            return
-        }
-
-        client.StartStream({}, (err, res) => {
+    const res: StreamResponse__Output | undefined = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
             if (err) {
-                // console.log(err)
+                console.log(err)
+                resolve(undefined)
                 return
             }
-        })
-    })
 
-}
-
-const startAudio = async () => {
-    const deadline = new Date()
-    deadline.setSeconds(deadline.getSeconds() + 5)
-
-    const ready: boolean = await new Promise<boolean>(resolve => {
-        client.waitForReady(deadline, (err) => {
-            if (err) {
-                // console.log(err)
-                resolve(false)
-                return false
-            }
-
-            client.StartAudio({}, (err, res) => {
+            client.StartStream({}, (err, res) => {
                 if (err) {
-                    // console.log(err)
-                    resolve(false)
-                    return false
-                }
-
-                if (res && res.ready) {
-                    resolve(res.ready)
-                    return res.ready
-                }
-            })
-        })
-
-    })
-
-
-
-    return ready
-}
-
-const startOutput = async (mode: string) => {
-    const deadline = new Date()
-    deadline.setSeconds(deadline.getSeconds() + 5)
-
-    const ready: boolean = await new Promise<boolean>(resolve => {
-        client.waitForReady(deadline, (err) => {
-            if (err) {
-                // console.log(err)
-                resolve(false)
-                return false
-            }
-
-            client.StartOutput({ mode: mode }, (err, res) => {
-                if (err) {
-                    // console.log(err)
-                    resolve(false)
+                    console.log(err)
+                    resolve(undefined)
                     return
                 }
-
-                if (res && res.ready) {
-                    resolve(res.ready)
-                    return res.ready
-                }
+                resolve(res)
             })
         })
-
     })
 
-    return ready
+    return res
 }
-
 
 export const stopStream = async () => {
     const deadline = new Date()
     deadline.setSeconds(deadline.getSeconds() + 5)
 
-    client.waitForReady(deadline, (err) => {
-        if (err) {
-            // console.log(err)
-            return
-        }
+    const res: StatusResponse__Output | undefined = await new Promise(resolve => {
 
-        client.StopStream({}, (err, res) => {
+        client.waitForReady(deadline, (err) => {
             if (err) {
-                // console.log(err)
+                console.log(err)
+                resolve(undefined)
                 return
             }
+
+            client.StopStream({}, (err, res) => {
+                if (err) {
+                    console.log(err)
+                    resolve(undefined)
+                    return
+                }
+
+                if (res) {
+                    resolve(res)
+                    return
+                }
+            })
         })
     })
+
+    return res
 }
+
+
+export const startPreview = async () => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    const res: StatusResponse__Output | undefined = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                console.log(err)
+                resolve(undefined)
+                return
+            }
+
+            client.StartPreview({}, (err, res) => {
+                if (err) {
+                    console.log(err)
+                    resolve(undefined)
+                    return
+                }
+
+                if (res) {
+                    resolve(res)
+                    return
+                }
+            })
+        })
+
+    })
+
+    return res
+}
+
+export const stopPreview = async () => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    const res: StatusResponse__Output | undefined = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                console.log(err)
+                resolve(undefined)
+                return
+            }
+
+            client.StopPreview({}, (err, res) => {
+                if (err) {
+                    console.log(err)
+                    resolve(undefined)
+                    return
+                }
+
+                if (res) {
+                    resolve(res)
+                    return
+                }
+            })
+        })
+    })
+
+    return res
+}
+
 
 export const checkStatus = async () => {
     const deadline = new Date()
@@ -262,13 +269,13 @@ export const checkStatus = async () => {
     const status: StatusResponse__Output | undefined = await new Promise(resolve => {
         client.waitForReady(deadline, (err) => {
             if (err) {
-                // console.log(err)
+                console.log(err)
                 resolve(undefined)
             }
 
             client.Status({}, (err, res) => {
                 if (err) {
-                    // console.log(err)
+                    console.log(err)
                     resolve(undefined)
                 }
 
@@ -283,25 +290,6 @@ export const checkStatus = async () => {
     })
 
     return status
-}
-
-export const stopOutput = async () => {
-    const deadline = new Date()
-    deadline.setSeconds(deadline.getSeconds() + 5)
-
-    client.waitForReady(deadline, (err) => {
-        if (err) {
-            // console.log(err)
-            return
-        }
-
-        client.StopOutput({}, (err, res) => {
-            if (err) {
-                // console.log(err)
-                return
-            }
-        })
-    })
 }
 
 export const findNewSongsNCS = async () => {
@@ -328,7 +316,7 @@ export const statusNCS = async () => {
     const status: StatusNCSResponse__Output | undefined = await new Promise(resolve => {
         client.waitForReady(deadline, (err) => {
             if (err) {
-                // console.log(err)
+                console.log(err)
                 resolve(undefined)
             }
 
@@ -368,7 +356,6 @@ export const saveTwitchStreamKey = async (streamKey: string) => {
                 }
                 if (res !== undefined) {
                     resolve(true)
-                    revalidatePath("/")
                 } else {
                     resolve(false)
                 }
@@ -427,7 +414,6 @@ export const deleteTwitchStreamKey = async () => {
                 }
                 if (res !== undefined) {
                     resolve(true)
-                    revalidatePath("/")
                 } else {
                     resolve(false)
                 }
@@ -457,7 +443,6 @@ export const saveTwitchCredentials = async (client_id: string, secret: string) =
                 }
                 if (res !== undefined) {
                     resolve(true)
-                    revalidatePath("/")
                 } else {
                     resolve(false)
                 }
@@ -563,7 +548,7 @@ export const getOverlays = async () => {
     const overlays: Overlays__Output | undefined = await new Promise(resolve => {
         client.waitForReady(deadline, (err) => {
             if (err) {
-                // console.log(err)
+                console.log(err)
                 resolve(undefined)
             }
 
@@ -574,7 +559,6 @@ export const getOverlays = async () => {
 
                 if (res !== undefined) {
                     resolve(res)
-                    revalidatePath("/")
                 } else {
                     resolve(undefined)
                 }
@@ -605,7 +589,6 @@ export const getBgVideos = async () => {
 
                 if (res !== undefined) {
                     resolve(res)
-                    revalidatePath("/")
                 } else {
                     resolve(undefined)
                 }
@@ -636,7 +619,6 @@ export const swapBgVideo = async (video: BackgroundVideo) => {
 
                 if (res !== undefined) {
                     resolve(res)
-                    revalidatePath("/")
                 } else {
                     resolve(undefined)
                 }
@@ -731,13 +713,48 @@ export const deleteBgVideo = async (video: BackgroundVideo) => {
 
                 if (res !== undefined) {
                     resolve({ ok: true, msg: "" })
-                    revalidatePath("/")
                 } else {
                     resolve({ ok: false, msg: "" })
                 }
             })
         })
     })
+
+    return res
+}
+
+export const getStreamParams = async () => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    const res: StreamParametersResponse__Output | undefined = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                console.log(err)
+                resolve(undefined)
+                return
+            }
+
+            client.StreamParameters({}, (err, res) => {
+                if (err) {
+                    console.log(err)
+                    resolve(undefined)
+                    return
+                }
+
+                if (res) {
+                    resolve(res)
+                    return
+                }
+            })
+        })
+    })
+
+    if (res) {
+        if (res.volume === 101) {
+            res.volume = 0
+        }
+    }
 
     return res
 }

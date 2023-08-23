@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gocolly/colly"
@@ -46,7 +47,7 @@ var songs []SongDetails
 
 func (s *MainServer) FindNewSongsNCS(ctx context.Context, in *google_protobuf.Empty) (*google_protobuf.Empty, error) {
 
-	if s.findingOn {
+	if s.status.finding {
 		return nil, status.Errorf(
 			codes.FailedPrecondition,
 			fmt.Sprintln("Finding new songs. Please wait..."),
@@ -56,7 +57,7 @@ func (s *MainServer) FindNewSongsNCS(ctx context.Context, in *google_protobuf.Em
 	defer log.Println("Finished finding new songs")
 
 	s.mu.Lock()
-	s.findingOn = true
+	s.status.finding = true
 	s.mu.Unlock()
 
 	moods, err := getMoods()
@@ -109,6 +110,10 @@ func (s *MainServer) FindNewSongsNCS(ctx context.Context, in *google_protobuf.Em
 					"files/songs/"+filename,
 				)
 
+				cmd.SysProcAttr = &syscall.SysProcAttr{
+					Pdeathsig: syscall.SIGKILL,
+				}
+
 				err = cmd.Run()
 				if err != nil {
 					// Remove from DB if error.
@@ -123,7 +128,8 @@ func (s *MainServer) FindNewSongsNCS(ctx context.Context, in *google_protobuf.Em
 					if err != nil {
 						log.Fatalln(err)
 					}
-
+					cmd.Process.Signal(syscall.SIGKILL)
+					cmd.Wait()
 				}
 
 				os.Remove("files/songs/" + tempFilename)
@@ -142,14 +148,14 @@ func (s *MainServer) FindNewSongsNCS(ctx context.Context, in *google_protobuf.Em
 	wg.Wait()
 
 	s.mu.Lock()
-	s.findingOn = false
+	s.status.finding = false
 	s.mu.Unlock()
 
 	return &google_protobuf.Empty{}, nil
 }
 
 func (s *MainServer) StatusNCS(ctx context.Context, in *google_protobuf.Empty) (*pb.StatusNCSResponse, error) {
-	return &pb.StatusNCSResponse{Active: s.findingOn}, nil
+	return &pb.StatusNCSResponse{Active: s.status.finding}, nil
 }
 
 func getMoods() ([]Mood, error) {

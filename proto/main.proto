@@ -11,13 +11,11 @@ service Main {
     
     
     rpc Preview (SDP) returns (SDP) {};
-    rpc StartStream (google.protobuf.Empty) returns (google.protobuf.Empty) {};
-    rpc StopStream (google.protobuf.Empty) returns (google.protobuf.Empty) {};
+    rpc StartPreview (google.protobuf.Empty) returns (StatusResponse) {};
+    rpc StopPreview (google.protobuf.Empty) returns (StatusResponse) {};
+    rpc StartStream (google.protobuf.Empty) returns (StreamResponse) {};
+    rpc StopStream (google.protobuf.Empty) returns (StatusResponse) {};
 
-    rpc StartAudio (google.protobuf.Empty) returns (AudioResponse) {};
-
-    rpc StartOutput (OutputRequest) returns (OutputResponse) {};
-    rpc StopOutput (google.protobuf.Empty) returns (google.protobuf.Empty) {};
     rpc Status (google.protobuf.Empty) returns (StatusResponse) {};
     rpc SwapBackgroundVideo (BackgroundVideo) returns (google.protobuf.Empty) {};
 
@@ -31,6 +29,7 @@ service Main {
     rpc CheckTwitchDevCredentials (google.protobuf.Empty) returns (DevCredentials) {};
     rpc DeleteTwitchDevCredentials (google.protobuf.Empty) returns (google.protobuf.Empty) {};
     rpc TwitchAccessToken (UserAuth) returns (google.protobuf.Empty) {};
+    rpc StreamParameters (google.protobuf.Empty) returns (StreamParametersResponse) {}; 
 
     rpc GetOverlays (google.protobuf.Empty) returns (Overlays) {};
 
@@ -56,16 +55,13 @@ message AudioResponse {
     bool ready = 1;
 }
 
-message OutputRequest {
-    string mode = 1;
-}
-
-message OutputResponse {
-    bool ready = 1;
+message StreamResponse {
+    double volume = 1;
+    StatusResponse status = 2;
 }
 
 message StatusResponse {
-    bool output = 1;
+    bool preview = 1;
     bool audio = 2;
     bool stream = 3;
 }
@@ -91,6 +87,14 @@ message DevCredentials {
 
 message UserAuth {
     string code = 1;
+}
+
+message StreamParametersResponse {
+    int32 width = 1;
+    int32 height = 2;
+    int32 fps = 3;
+    string preset = 4;
+    double volume = 5;
 }
 
 message Overlay {

@@ -5,13 +5,13 @@ type Props = {
     disabled: boolean | undefined
     isWaiting: boolean
     backgroundColor: string
-    backgroundColorHover: string
+    backgroundColorHover?: string
     onClick: () => Promise<void>
 }
 
 const ActionButton = ({ text, waitingText, width, onClick, disabled, isWaiting, backgroundColor, backgroundColorHover }: Props) => {
     return (
-        <div onClick={() => onClick()} className={`flex justify-center items-center ${backgroundColor} w-${width} py-1 rounded font-semibold tracking-wider capitalize cursor-pointer transition hover:${backgroundColorHover} ${disabled && 'pointer-events-none opacity-40 '} ${isWaiting && 'pointer-events-none '}`}>
+        <div onClick={() => onClick()} className={`flex justify-center items-center ${backgroundColor} w-${width} py-1 rounded font-semibold tracking-wider capitalize cursor-pointer transition ${backgroundColorHover && `hover:${backgroundColorHover}`} ${disabled && 'pointer-events-none opacity-40 '} ${isWaiting && 'pointer-events-none '}`}>
             {isWaiting ?
                 <div className="flex justify-center items-center gap-2 h-6">
                     <span>{waitingText}</span>
