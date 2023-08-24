@@ -15,7 +15,10 @@ require (
 
 )
 
-require github.com/go-zeromq/zmq4 v0.15.0
+require (
+	github.com/go-zeromq/zmq4 v0.15.0
+	github.com/golang/protobuf v1.5.3
+)
 
 require (
 	github.com/PuerkitoBio/goquery v1.8.1 // indirect
@@ -57,10 +60,9 @@ require (
 )
 
 require (
-	github.com/golang/protobuf v1.5.3
 	github.com/stretchr/testify v1.8.3 // indirect
 	golang.org/x/image v0.9.0
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
+	google.golang.org/protobuf v1.31.0
 )

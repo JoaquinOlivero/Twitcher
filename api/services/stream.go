@@ -20,9 +20,9 @@ import (
 	"syscall"
 
 	"github.com/go-zeromq/zmq4"
-	google_protobuf "github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type DataChannelMsg struct {
@@ -78,11 +78,11 @@ type MainServer struct {
 	channels               Channels
 }
 
-func (s *MainServer) Status(ctx context.Context, in *google_protobuf.Empty) (*pb.StatusResponse, error) {
+func (s *MainServer) Status(ctx context.Context, in *emptypb.Empty) (*pb.StatusResponse, error) {
 	return &pb.StatusResponse{Audio: s.status.audio, Preview: s.status.preview, Stream: s.status.stream}, nil
 }
 
-func (s *MainServer) StartPreview(ctx context.Context, in *google_protobuf.Empty) (*pb.StatusResponse, error) {
+func (s *MainServer) StartPreview(ctx context.Context, in *emptypb.Empty) (*pb.StatusResponse, error) {
 	params, err := getStreamParams()
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func (s *MainServer) StartPreview(ctx context.Context, in *google_protobuf.Empty
 	return &pb.StatusResponse{Preview: s.status.preview, Audio: s.status.audio, Stream: s.status.stream}, nil
 }
 
-func (s *MainServer) StopPreview(ctx context.Context, in *google_protobuf.Empty) (*pb.StatusResponse, error) {
+func (s *MainServer) StopPreview(ctx context.Context, in *emptypb.Empty) (*pb.StatusResponse, error) {
 	log.Println("stop preview")
 	s.mu.Lock()
 	s.status.preview = false
@@ -158,7 +158,7 @@ func (s *MainServer) Preview(ctx context.Context, in *pb.SDP) (*pb.SDP, error) {
 	return &pb.SDP{Sdp: sdpForClient}, nil
 }
 
-func (s *MainServer) StartStream(ctx context.Context, in *google_protobuf.Empty) (*pb.StreamResponse, error) {
+func (s *MainServer) StartStream(ctx context.Context, in *emptypb.Empty) (*pb.StreamResponse, error) {
 	if s.status.stream {
 		return nil, status.Errorf(
 			codes.FailedPrecondition,
@@ -231,7 +231,7 @@ func (s *MainServer) StartStream(ctx context.Context, in *google_protobuf.Empty)
 	return &pb.StreamResponse{Volume: s.streamParams.volume, Status: &pb.StatusResponse{Stream: s.status.stream, Audio: s.status.audio, Preview: s.status.preview}}, nil
 }
 
-func (s *MainServer) StopStream(ctx context.Context, in *google_protobuf.Empty) (*pb.StatusResponse, error) {
+func (s *MainServer) StopStream(ctx context.Context, in *emptypb.Empty) (*pb.StatusResponse, error) {
 	s.mu.Lock()
 	s.status.preview = false
 	s.status.stream = false
@@ -248,7 +248,7 @@ func (s *MainServer) StopStream(ctx context.Context, in *google_protobuf.Empty) 
 	return &pb.StatusResponse{Stream: s.status.stream, Audio: s.status.audio, Preview: s.status.preview}, nil
 }
 
-func (s *MainServer) CreateSongPlaylist(ctx context.Context, in *google_protobuf.Empty) (*pb.SongPlaylist, error) {
+func (s *MainServer) CreateSongPlaylist(ctx context.Context, in *emptypb.Empty) (*pb.SongPlaylist, error) {
 
 	playlist, err := s.generateRandomPlaylist()
 	if err != nil {
@@ -258,11 +258,11 @@ func (s *MainServer) CreateSongPlaylist(ctx context.Context, in *google_protobuf
 	return playlist, nil
 }
 
-func (s *MainServer) CurrentSongPlaylist(ctx context.Context, in *google_protobuf.Empty) (*pb.SongPlaylist, error) {
+func (s *MainServer) CurrentSongPlaylist(ctx context.Context, in *emptypb.Empty) (*pb.SongPlaylist, error) {
 	return &s.playlist, nil
 }
 
-func (s *MainServer) UpdateSongPlaylist(ctx context.Context, in *pb.SongPlaylist) (*google_protobuf.Empty, error) {
+func (s *MainServer) UpdateSongPlaylist(ctx context.Context, in *pb.SongPlaylist) (*emptypb.Empty, error) {
 
 	s.mu.Lock()
 
@@ -271,10 +271,10 @@ func (s *MainServer) UpdateSongPlaylist(ctx context.Context, in *pb.SongPlaylist
 
 	s.mu.Unlock()
 
-	return &google_protobuf.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *MainServer) GetOverlays(ctx context.Context, in *google_protobuf.Empty) (*pb.Overlays, error) {
+func (s *MainServer) GetOverlays(ctx context.Context, in *emptypb.Empty) (*pb.Overlays, error) {
 	if len(s.overlays) == 0 {
 		return &pb.Overlays{}, nil
 	}
@@ -303,7 +303,7 @@ func (s *MainServer) GetOverlays(ctx context.Context, in *google_protobuf.Empty)
 	return &pb.Overlays{Overlays: overlays}, nil
 }
 
-func (s *MainServer) BackgroundVideos(ctx context.Context, in *google_protobuf.Empty) (*pb.BackgroundVideosResponse, error) {
+func (s *MainServer) BackgroundVideos(ctx context.Context, in *emptypb.Empty) (*pb.BackgroundVideosResponse, error) {
 	var videos []*pb.BackgroundVideo
 
 	db, err := sql.Open("sqlite3", "data.db")
@@ -340,7 +340,7 @@ func (s *MainServer) BackgroundVideos(ctx context.Context, in *google_protobuf.E
 	return &pb.BackgroundVideosResponse{Videos: videos}, nil
 }
 
-func (s *MainServer) SwapBackgroundVideo(ctx context.Context, in *pb.BackgroundVideo) (*google_protobuf.Empty, error) {
+func (s *MainServer) SwapBackgroundVideo(ctx context.Context, in *pb.BackgroundVideo) (*emptypb.Empty, error) {
 	s.mu.Lock()
 	s.currentBackgroundVideo = *in
 	s.mu.Unlock()
@@ -366,7 +366,7 @@ func (s *MainServer) SwapBackgroundVideo(ctx context.Context, in *pb.BackgroundV
 		s.channels.swapBackgroundVideo <- struct{}{}
 	}
 
-	return &google_protobuf.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *MainServer) UploadVideo(stream pb.Main_UploadVideoServer) error {
@@ -428,9 +428,9 @@ func (s *MainServer) UploadVideo(stream pb.Main_UploadVideoServer) error {
 
 }
 
-func (s *MainServer) DeleteBackgroundVideo(ctx context.Context, in *pb.BackgroundVideo) (*google_protobuf.Empty, error) {
+func (s *MainServer) DeleteBackgroundVideo(ctx context.Context, in *pb.BackgroundVideo) (*emptypb.Empty, error) {
 	if s.status.preview && s.currentBackgroundVideo.Id == in.Id || s.status.stream && s.currentBackgroundVideo.Id == in.Id {
-		return &google_protobuf.Empty{}, status.Errorf(
+		return &emptypb.Empty{}, status.Errorf(
 			codes.FailedPrecondition,
 			fmt.Sprintln("Can't delete active background video while preview and/or stream are on."),
 		)
@@ -439,7 +439,7 @@ func (s *MainServer) DeleteBackgroundVideo(ctx context.Context, in *pb.Backgroun
 	db, err := sql.Open("sqlite3", "data.db")
 	if err != nil {
 		log.Println(err)
-		return &google_protobuf.Empty{}, err
+		return &emptypb.Empty{}, err
 	}
 
 	defer db.Close()
@@ -461,10 +461,10 @@ func (s *MainServer) DeleteBackgroundVideo(ctx context.Context, in *pb.Backgroun
 		return nil, err
 	}
 
-	return &google_protobuf.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *MainServer) StreamParameters(ctx context.Context, in *google_protobuf.Empty) (*pb.StreamParametersResponse, error) {
+func (s *MainServer) StreamParameters(ctx context.Context, in *emptypb.Empty) (*pb.StreamParametersResponse, error) {
 	if s.streamParams.preset == "" {
 		params, err := getStreamParams()
 		if err != nil {
