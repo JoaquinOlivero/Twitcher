@@ -304,7 +304,8 @@ const Preview = forwardRef<Ref, Props>((props, vRef) => {
             </div>
 
             <div className="absolute top-0 w-full h-full" ref={vRef}>
-                <div className="absolute top-0 z-10">
+                {/* <div className="absolute top-0 z-10"> */}
+                <div className="absolute top-0 mh-1080:top-1/2 mh-1080:left-1/2 mh-1080:transform mh-1080:-translate-x-1/2 mh-1080:-translate-y-1/2 z-10">
                     <canvas ref={canvasRef} />
                 </div>
             </div>

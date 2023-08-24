@@ -36,6 +36,7 @@ const Top = ({ status, statusStreamKey, twitchCredentials, streamParams }: Props
             video.muted = true
             setMuted(true)
             setVolume(0)
+            video.classList.add("absolute", "top-0", "mh-1080:top-1/2", "mh-1080:left-1/2", "mh-1080:transform", "mh-1080:-translate-x-1/2", "mh-1080:-translate-y-1/2")
 
             video.onloadeddata = function () {
                 const boundingClient = video.getBoundingClientRect()

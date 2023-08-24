@@ -12,13 +12,16 @@ module.exports = {
       'poppins-bold': ['Poppins-Bold'],
       'poppins-light': ['Poppins-Light']
     },
+    screens: {
+      'mh-1080': { 'raw': '(min-height: 1080px)' }
+    },
     extend: {
       colors: {
         'background': '#191019',
         'foreground': '#140D14',
         'primary': '#EA5600',
       }
-    },
+    }
   },
   plugins: []
 }
