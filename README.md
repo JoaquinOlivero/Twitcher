@@ -57,7 +57,7 @@ sudo chmod +x ffmpeg_compile.sh
 
 ### Install
 ```
-cd Twitcher && cd api && go get ./... && cd ../src && npm install && npm run build && cd ../
+cd api && go build -o ../bin/Twitcher  && cd ../src && npm install && npm run build && cd ../
 ```
 
 ### Run
@@ -66,12 +66,18 @@ cd Twitcher && cd api && go get ./... && cd ../src && npm install && npm run bui
 The grpc server runs on port :9000 and the song covers are statically served on port :9001.
 
 ```
-go run .
+cd bin
+```
+```
+Twitcher
 ```
 
 #### Next.js - Twitcher/src directory.
 Runs in port :3000 by default.
 
+```
+cd src
+```
 ```
 npm run start
 ```
@@ -79,6 +85,21 @@ npm run start
 Change port
 ```
 npm run start -- -p 3001
+```
+### Docker
+#### Docker image
+
+```
+docker pull joaquinolivero/twitcher
+```
+
+#### Run command
+```
+docker run -d -p 9000:9000 -p 9001:9001 -p 3000:3000 -v /path/to/files:/app/bin/files --name twitcher joaquinolivero/twitcher
+```
+#### Build
+```
+docker build . -t joaquinolivero/twitcher
 ```
 
 ## TODO
