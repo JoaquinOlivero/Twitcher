@@ -27,6 +27,9 @@ This project is at a very early stage as it only fits my current needs. However,
 - Upload background video files.
 - OAuth2 implemented to access Twitch api and receive alerts from Twitch that can be displayed on the livestream.
 
+## Project Screenshot
+![Twitcher GUI screenshot](/images/twitcher_screenshot.png)
+
 ## GUI Example Clips
 #### Start stream and swap background video.
 <img src="images/1b.gif" alt="drawing" width="350"/> <img src="images/1a.gif" alt="drawing" width="350"/>
@@ -36,19 +39,49 @@ This project is at a very early stage as it only fits my current needs. However,
 
 <img src="images/6b.gif" alt="drawing" width="350"/> <img src="images/6a.gif" alt="drawing" width="350"/>
 
-## Installation and Setup Instructions:
+## Installation and Setup Instructions
 
-NOTE: This project has only been tested in Linux.
+NOTE: This project has only been tested on Linux amd64/arm64.
 
 Clone this repository.
 
-Install:
+### Ffmpeg build
+A build of ffmpeg with libzmq is required to run the program. The script "ffmpeg_compile.sh" creates a build of ffmpeg with libzmq.
+```
+sudo chmod +x ffmpeg_compile.sh
+```
 
+```
+./ffmpeg_compile.sh 
+```
+
+### Install
 ```
 cd Twitcher && cd api && go get ./... && cd ../src && npm install && npm run build && cd ../
 ```
 
-## TODO:
+### Run
+
+#### Golang backend - Twitcher/api directory.
+The grpc server runs on port :9000 and the song covers are statically served on port :9001.
+
+```
+go run .
+```
+
+#### Next.js - Twitcher/src directory.
+Runs in port :3000 by default.
+
+```
+npm run start
+```
+
+Change port
+```
+npm run start -- -p 3001
+```
+
+## TODO
 
 - Implement all Twitch alerts. Right now only alerts for new follows and subs are implemented.
 - Select which moods and genres to scrape from ncs.io.
@@ -56,3 +89,4 @@ cd Twitcher && cd api && go get ./... && cd ../src && npm install && npm run bui
 - Add option to create and manipulate audio playlists.
 - Add YouTube as a stream option.
 - Add option to change the text font in the song overlay.
+- Add flag to change default ports for the grpc and static files servers.
