@@ -349,8 +349,7 @@ const OverlayObject = ({ object }: OverlayObjectProps) => {
                 if (object.type === "img") {
                     obj.scaleToWidth((videoElementSize.width / 1280) * value)
                     fabricRef.current.renderAll()
-                    // @ts-ignore
-                    obj.fire("modified", { "target": obj })
+                    debouncedTrigger(obj, "modified")
                 } else {
                     obj.set("width", (videoElementSize.width / 1280) * value)
                     fabricRef.current.renderAll()
@@ -397,15 +396,6 @@ const OverlayObject = ({ object }: OverlayObjectProps) => {
     }
 
 
-    const debouncedTrigger = useMemo(() =>
-        debounce((obj: BaseFabricObject, action: string) => {
-            // @ts-ignore
-            obj.fire(action, { "target": obj })
-        }, 300),
-        []
-    )
-
-
     const handleFontSize = (value: number) => {
         if (!value) {
             setFontSize("")
@@ -419,12 +409,19 @@ const OverlayObject = ({ object }: OverlayObjectProps) => {
             if (obj) {
                 obj.set("fontSize", (videoElementSize.width / 1280) * value)
                 fabricRef.current.renderAll()
-                // @ts-ignore
-                obj.fire("modified", { "target": obj })
+                debouncedTrigger(obj, "modified")
             }
 
         }
     }
+
+    const debouncedTrigger = useMemo(() =>
+        debounce((obj: BaseFabricObject, action: string) => {
+            // @ts-ignore
+            obj.fire(action, { "target": obj })
+        }, 300),
+        []
+    )
 
     useEffect(() => {
         if (settingsCogRef.current) {
