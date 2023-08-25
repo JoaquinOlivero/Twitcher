@@ -138,7 +138,7 @@ func (s *MainServer) InitOverlay() error {
 	}
 
 	// Get cover overlay settings
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return err
 	}

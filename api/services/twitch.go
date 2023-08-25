@@ -15,7 +15,7 @@ import (
 func (s *MainServer) TwitchSaveStreamKey(ctx context.Context, in *pb.TwitchStreamKey) (*google_protobuf.Empty, error) {
 
 	// Connect to db and create user with corresponding stream key.
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (s *MainServer) TwitchSaveStreamKey(ctx context.Context, in *pb.TwitchStrea
 
 func (s *MainServer) CheckTwitchStreamKey(ctx context.Context, in *google_protobuf.Empty) (*pb.TwitchStreamKey, error) {
 
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (s *MainServer) CheckTwitchStreamKey(ctx context.Context, in *google_protob
 
 func (s *MainServer) DeleteTwitchStreamKey(ctx context.Context, in *google_protobuf.Empty) (*google_protobuf.Empty, error) {
 
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (s *MainServer) DeleteTwitchStreamKey(ctx context.Context, in *google_proto
 }
 
 func (s *MainServer) SaveTwitchDevCredentials(ctx context.Context, in *pb.DevCredentials) (*google_protobuf.Empty, error) {
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return &google_protobuf.Empty{}, err
 	}
@@ -92,7 +92,7 @@ func (s *MainServer) SaveTwitchDevCredentials(ctx context.Context, in *pb.DevCre
 
 func (s *MainServer) CheckTwitchDevCredentials(ctx context.Context, in *google_protobuf.Empty) (*pb.DevCredentials, error) {
 
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return &pb.DevCredentials{}, err
 	}
@@ -115,7 +115,7 @@ func (s *MainServer) CheckTwitchDevCredentials(ctx context.Context, in *google_p
 
 func (s *MainServer) DeleteTwitchDevCredentials(ctx context.Context, in *google_protobuf.Empty) (*google_protobuf.Empty, error) {
 
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (s *MainServer) DeleteTwitchDevCredentials(ctx context.Context, in *google_
 
 func (s *MainServer) TwitchAccessToken(ctx context.Context, in *pb.UserAuth) (*google_protobuf.Empty, error) {
 	// Get client id and secret from db
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return &google_protobuf.Empty{}, err
 	}
@@ -232,7 +232,7 @@ func saveClient(clientId, secret, code string) error {
 	}
 
 	// Connect to db and create user with corresponding data.
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return err
 	}

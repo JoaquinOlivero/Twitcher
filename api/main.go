@@ -56,7 +56,7 @@ func checkDatabase() error {
 	log.Println("Checking database")
 
 	// Check if database already exists.
-	file, err := os.OpenFile("data.db", os.O_RDWR|os.O_CREATE|os.O_EXCL, 0744)
+	file, err := os.OpenFile("files/data.db", os.O_RDWR|os.O_CREATE|os.O_EXCL, 0744)
 	if err != nil {
 		defer file.Close()
 

@@ -117,7 +117,7 @@ func (s *MainServer) FindNewSongsNCS(ctx context.Context, in *google_protobuf.Em
 				err = cmd.Run()
 				if err != nil {
 					// Remove from DB if error.
-					db, err := sql.Open("sqlite3", "data.db")
+					db, err := sql.Open("sqlite3", "files/data.db")
 					if err != nil {
 						log.Println(err)
 					}
@@ -160,7 +160,7 @@ func (s *MainServer) StatusNCS(ctx context.Context, in *google_protobuf.Empty) (
 
 func getMoods() ([]Mood, error) {
 	// Query db to retrieve moods.
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return nil, err
 	}
@@ -331,7 +331,7 @@ func songDoesNotExist(page string) bool {
 	}
 
 	// Connect to db.
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return false
 	}
@@ -354,7 +354,7 @@ func songDoesNotExist(page string) bool {
 
 func saveSong(song SongDetails) error {
 	// Connect to db.
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return err
 	}

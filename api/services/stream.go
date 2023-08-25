@@ -306,7 +306,7 @@ func (s *MainServer) GetOverlays(ctx context.Context, in *emptypb.Empty) (*pb.Ov
 func (s *MainServer) BackgroundVideos(ctx context.Context, in *emptypb.Empty) (*pb.BackgroundVideosResponse, error) {
 	var videos []*pb.BackgroundVideo
 
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +345,7 @@ func (s *MainServer) SwapBackgroundVideo(ctx context.Context, in *pb.BackgroundV
 	s.currentBackgroundVideo = *in
 	s.mu.Unlock()
 
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -383,7 +383,7 @@ func (s *MainServer) UploadVideo(stream pb.Main_UploadVideoServer) error {
 		req, err := stream.Recv()
 		if err == io.EOF {
 			// Create tables
-			db, err := sql.Open("sqlite3", "data.db")
+			db, err := sql.Open("sqlite3", "files/data.db")
 			if err != nil {
 				log.Println(err)
 				return err
@@ -436,7 +436,7 @@ func (s *MainServer) DeleteBackgroundVideo(ctx context.Context, in *pb.Backgroun
 		)
 	}
 
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		log.Println(err)
 		return &emptypb.Empty{}, err
@@ -560,7 +560,7 @@ func (s *MainServer) initStream(r *io.PipeReader, twitchStreamLink string, exitA
 		"-map", "[vout]",
 		"-c:v", "libx264",
 		"-fps_mode", "passthrough",
-		"-preset", s.streamParams.preset, "-maxrate", "6M", "-bufsize", "3M",
+		"-preset", s.streamParams.preset, "-crf", "23",
 		"-map", "3:0",
 		"-c:a", "libmp3lame", "-q:a", "0",
 		"-af", `volume=`+strconv.FormatFloat(s.streamParams.volume, 'f', -1, 64)+`,volume@foo,azmq=bind_address=tcp\\\://0.0.0.0\\\:5554`,
@@ -699,7 +699,7 @@ func (s *MainServer) initAudio(wg *sync.WaitGroup) error {
 func (s *MainServer) initBackgroundVideo(w *io.PipeWriter, wg *sync.WaitGroup) error {
 	defer log.Println("bg video stopped")
 
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -762,7 +762,7 @@ func (s *MainServer) initBackgroundVideo(w *io.PipeWriter, wg *sync.WaitGroup) e
 func (s *MainServer) generateRandomPlaylist() (*pb.SongPlaylist, error) {
 
 	// Connect to db.
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return nil, err
 	}
@@ -854,7 +854,7 @@ func (s *MainServer) manageDataChannelMessage(msg []byte) {
 
 func saveVolume(volume float64) {
 	// Connect to db.
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		log.Println(err)
 	}
@@ -948,7 +948,7 @@ func getStreamParams() (StreamParams, error) {
 	var streamParams StreamParams
 
 	// Get stream parameters -> preset, width, height, fps
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return StreamParams{}, err
 	}
@@ -993,7 +993,7 @@ func twitchIngestLink() (string, error) {
 	resp.Body.Close()
 
 	// Get stream key
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		return "", err
 	}
