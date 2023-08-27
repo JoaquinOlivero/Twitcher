@@ -102,7 +102,10 @@ export default function PCProvider({ children }: Props) {
         setDataChan(dc)
 
         dc.onopen = () => console.log("open data channel")
-        dc.onclose = () => console.log("close data channel")
+        dc.onclose = () => {
+            setDataChan(null)
+            console.log("close data channel")
+        }
 
         dc.onmessage = (event) => {
             const data: DataChannelMsg = JSON.parse(event.data)
