@@ -30,6 +30,7 @@ service Main {
     rpc DeleteTwitchDevCredentials (google.protobuf.Empty) returns (google.protobuf.Empty) {};
     rpc TwitchAccessToken (UserAuth) returns (google.protobuf.Empty) {};
     rpc StreamParameters (google.protobuf.Empty) returns (StreamParametersResponse) {}; 
+    rpc SaveStreamParameters (SaveStreamParametersRequest) returns (google.protobuf.Empty) {}; 
 
     rpc GetOverlays (google.protobuf.Empty) returns (Overlays) {};
 
@@ -95,6 +96,13 @@ message StreamParametersResponse {
     int32 fps = 3;
     string preset = 4;
     double volume = 5;
+}
+
+message SaveStreamParametersRequest {
+    int32 width = 1;
+    int32 height = 2;
+    int32 fps = 3;
+    string preset = 4;
 }
 
 message Overlay {

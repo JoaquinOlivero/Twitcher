@@ -15,6 +15,7 @@ import { BackgroundVideosResponse__Output } from './pb/service/BackgroundVideosR
 import { BackgroundVideo } from './pb/service/BackgroundVideo';
 import { StreamResponse__Output } from './pb/service/StreamResponse';
 import { StreamParametersResponse__Output } from './pb/service/StreamParametersResponse';
+import { SaveStreamParametersRequest } from './pb/service/SaveStreamParametersRequest';
 
 const PROTO_FILE = "../proto/main.proto"
 
@@ -757,6 +758,36 @@ export const getStreamParams = async () => {
 
         res.volume = Math.round(res.volume! * 100)
     }
+
+    return res
+}
+
+export const saveStreamParams = async (params: SaveStreamParametersRequest) => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    const res: boolean = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                console.log(err)
+                resolve(false)
+                return
+            }
+
+            client.SaveStreamParameters(params, (err, res) => {
+                if (err) {
+                    console.log(err)
+                    resolve(false)
+                    return
+                }
+
+                if (res) {
+                    resolve(true)
+                    return
+                }
+            })
+        })
+    })
 
     return res
 }

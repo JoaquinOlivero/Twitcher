@@ -22,6 +22,7 @@ export interface ProtoGrpcType {
     Overlay: MessageTypeDefinition
     Overlays: MessageTypeDefinition
     SDP: MessageTypeDefinition
+    SaveStreamParametersRequest: MessageTypeDefinition
     Song: MessageTypeDefinition
     SongPlaylist: MessageTypeDefinition
     StatusNCSResponse: MessageTypeDefinition

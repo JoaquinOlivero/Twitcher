@@ -483,6 +483,30 @@ func (s *MainServer) StreamParameters(ctx context.Context, in *emptypb.Empty) (*
 	return &pb.StreamParametersResponse{Width: int32(s.streamParams.width), Height: int32(s.streamParams.height), Fps: int32(s.streamParams.fps), Preset: s.streamParams.preset, Volume: s.streamParams.volume}, nil
 }
 
+func (s *MainServer) SaveStreamParameters(ctx context.Context, in *pb.SaveStreamParametersRequest) (*emptypb.Empty, error) {
+	s.mu.Lock()
+	s.streamParams.width = int(in.Width)
+	s.streamParams.height = int(in.Height)
+	s.streamParams.fps = int(in.Fps)
+	s.streamParams.preset = in.Preset
+	s.mu.Unlock()
+
+	db, err := sql.Open("sqlite3", "files/data.db")
+	if err != nil {
+		log.Println(err)
+		return &emptypb.Empty{}, err
+	}
+
+	defer db.Close()
+
+	_, err = db.Exec("UPDATE users SET width = $1, height = $2, fps = $3, preset = $4 WHERE id = 1", int(in.Width), int(in.Height), int(in.Fps), in.Preset)
+	if err != nil {
+		return &emptypb.Empty{}, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func (s *MainServer) initPreview(r *io.PipeReader, wg *sync.WaitGroup) error {
 	defer log.Println("preview stopped")
 

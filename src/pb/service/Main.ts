@@ -8,6 +8,7 @@ import type { DevCredentials as _service_DevCredentials, DevCredentials__Output 
 import type { Empty as _google_protobuf_Empty, Empty__Output as _google_protobuf_Empty__Output } from '../google/protobuf/Empty';
 import type { Overlays as _service_Overlays, Overlays__Output as _service_Overlays__Output } from '../service/Overlays';
 import type { SDP as _service_SDP, SDP__Output as _service_SDP__Output } from '../service/SDP';
+import type { SaveStreamParametersRequest as _service_SaveStreamParametersRequest, SaveStreamParametersRequest__Output as _service_SaveStreamParametersRequest__Output } from '../service/SaveStreamParametersRequest';
 import type { SongPlaylist as _service_SongPlaylist, SongPlaylist__Output as _service_SongPlaylist__Output } from '../service/SongPlaylist';
 import type { StatusNCSResponse as _service_StatusNCSResponse, StatusNCSResponse__Output as _service_StatusNCSResponse__Output } from '../service/StatusNCSResponse';
 import type { StatusResponse as _service_StatusResponse, StatusResponse__Output as _service_StatusResponse__Output } from '../service/StatusResponse';
@@ -117,6 +118,15 @@ export interface MainClient extends grpc.Client {
   preview(argument: _service_SDP, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_SDP__Output>): grpc.ClientUnaryCall;
   preview(argument: _service_SDP, options: grpc.CallOptions, callback: grpc.requestCallback<_service_SDP__Output>): grpc.ClientUnaryCall;
   preview(argument: _service_SDP, callback: grpc.requestCallback<_service_SDP__Output>): grpc.ClientUnaryCall;
+  
+  SaveStreamParameters(argument: _service_SaveStreamParametersRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  SaveStreamParameters(argument: _service_SaveStreamParametersRequest, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  SaveStreamParameters(argument: _service_SaveStreamParametersRequest, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  SaveStreamParameters(argument: _service_SaveStreamParametersRequest, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  saveStreamParameters(argument: _service_SaveStreamParametersRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  saveStreamParameters(argument: _service_SaveStreamParametersRequest, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  saveStreamParameters(argument: _service_SaveStreamParametersRequest, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  saveStreamParameters(argument: _service_SaveStreamParametersRequest, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   
   SaveTwitchDevCredentials(argument: _service_DevCredentials, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   SaveTwitchDevCredentials(argument: _service_DevCredentials, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
@@ -260,6 +270,8 @@ export interface MainHandlers extends grpc.UntypedServiceImplementation {
   
   Preview: grpc.handleUnaryCall<_service_SDP__Output, _service_SDP>;
   
+  SaveStreamParameters: grpc.handleUnaryCall<_service_SaveStreamParametersRequest__Output, _google_protobuf_Empty>;
+  
   SaveTwitchDevCredentials: grpc.handleUnaryCall<_service_DevCredentials__Output, _google_protobuf_Empty>;
   
   StartPreview: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_StatusResponse>;
@@ -300,6 +312,7 @@ export interface MainDefinition extends grpc.ServiceDefinition {
   FindNewSongsNCS: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
   GetOverlays: MethodDefinition<_google_protobuf_Empty, _service_Overlays, _google_protobuf_Empty__Output, _service_Overlays__Output>
   Preview: MethodDefinition<_service_SDP, _service_SDP, _service_SDP__Output, _service_SDP__Output>
+  SaveStreamParameters: MethodDefinition<_service_SaveStreamParametersRequest, _google_protobuf_Empty, _service_SaveStreamParametersRequest__Output, _google_protobuf_Empty__Output>
   SaveTwitchDevCredentials: MethodDefinition<_service_DevCredentials, _google_protobuf_Empty, _service_DevCredentials__Output, _google_protobuf_Empty__Output>
   StartPreview: MethodDefinition<_google_protobuf_Empty, _service_StatusResponse, _google_protobuf_Empty__Output, _service_StatusResponse__Output>
   StartStream: MethodDefinition<_google_protobuf_Empty, _service_StreamResponse, _google_protobuf_Empty__Output, _service_StreamResponse__Output>

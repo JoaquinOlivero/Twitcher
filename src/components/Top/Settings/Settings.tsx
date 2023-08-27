@@ -2,13 +2,17 @@ import { DevCredentials__Output } from '@/pb/service/DevCredentials'
 import AddSongs from './AddSongs/AddSongs'
 import TwitchSettings from './TwitchSettings/TwitchSettings'
 import { TwitchStreamKey__Output } from '@/pb/service/TwitchStreamKey'
+import StreamParams from './StreamParams/StreamParams'
+import { StreamParametersResponse__Output } from '@/pb/service/StreamParametersResponse'
 
 type Props = {
     statusStreamKey: TwitchStreamKey__Output | undefined
     twitchCredentials: DevCredentials__Output | undefined
+    streamParams: StreamParametersResponse__Output | undefined
 }
 
-const Settings = ({ statusStreamKey, twitchCredentials }: Props) => {
+const Settings = ({ statusStreamKey, twitchCredentials, streamParams }: Props) => {
+
     return (
         <>
             <div className='w-1/4 flex flex-col items-start'>
@@ -22,6 +26,7 @@ const Settings = ({ statusStreamKey, twitchCredentials }: Props) => {
 
                         <AddSongs />
                         <TwitchSettings statusStreamKey={statusStreamKey} twitchCredentials={twitchCredentials} />
+                        <StreamParams streamParams={streamParams} />
                     </div>
                 </div>
             </div>

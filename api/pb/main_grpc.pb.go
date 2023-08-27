@@ -40,6 +40,7 @@ const (
 	Main_DeleteTwitchDevCredentials_FullMethodName = "/service.Main/DeleteTwitchDevCredentials"
 	Main_TwitchAccessToken_FullMethodName          = "/service.Main/TwitchAccessToken"
 	Main_StreamParameters_FullMethodName           = "/service.Main/StreamParameters"
+	Main_SaveStreamParameters_FullMethodName       = "/service.Main/SaveStreamParameters"
 	Main_GetOverlays_FullMethodName                = "/service.Main/GetOverlays"
 	Main_BackgroundVideos_FullMethodName           = "/service.Main/BackgroundVideos"
 	Main_UploadVideo_FullMethodName                = "/service.Main/UploadVideo"
@@ -70,6 +71,7 @@ type MainClient interface {
 	DeleteTwitchDevCredentials(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error)
 	TwitchAccessToken(ctx context.Context, in *UserAuth, opts ...grpc.CallOption) (*empty.Empty, error)
 	StreamParameters(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StreamParametersResponse, error)
+	SaveStreamParameters(ctx context.Context, in *SaveStreamParametersRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	GetOverlays(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Overlays, error)
 	BackgroundVideos(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*BackgroundVideosResponse, error)
 	UploadVideo(ctx context.Context, opts ...grpc.CallOption) (Main_UploadVideoClient, error)
@@ -264,6 +266,15 @@ func (c *mainClient) StreamParameters(ctx context.Context, in *empty.Empty, opts
 	return out, nil
 }
 
+func (c *mainClient) SaveStreamParameters(ctx context.Context, in *SaveStreamParametersRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
+	out := new(empty.Empty)
+	err := c.cc.Invoke(ctx, Main_SaveStreamParameters_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *mainClient) GetOverlays(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Overlays, error) {
 	out := new(Overlays)
 	err := c.cc.Invoke(ctx, Main_GetOverlays_FullMethodName, in, out, opts...)
@@ -349,6 +360,7 @@ type MainServer interface {
 	DeleteTwitchDevCredentials(context.Context, *empty.Empty) (*empty.Empty, error)
 	TwitchAccessToken(context.Context, *UserAuth) (*empty.Empty, error)
 	StreamParameters(context.Context, *empty.Empty) (*StreamParametersResponse, error)
+	SaveStreamParameters(context.Context, *SaveStreamParametersRequest) (*empty.Empty, error)
 	GetOverlays(context.Context, *empty.Empty) (*Overlays, error)
 	BackgroundVideos(context.Context, *empty.Empty) (*BackgroundVideosResponse, error)
 	UploadVideo(Main_UploadVideoServer) error
@@ -419,6 +431,9 @@ func (UnimplementedMainServer) TwitchAccessToken(context.Context, *UserAuth) (*e
 }
 func (UnimplementedMainServer) StreamParameters(context.Context, *empty.Empty) (*StreamParametersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StreamParameters not implemented")
+}
+func (UnimplementedMainServer) SaveStreamParameters(context.Context, *SaveStreamParametersRequest) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SaveStreamParameters not implemented")
 }
 func (UnimplementedMainServer) GetOverlays(context.Context, *empty.Empty) (*Overlays, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOverlays not implemented")
@@ -805,6 +820,24 @@ func _Main_StreamParameters_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Main_SaveStreamParameters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveStreamParametersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MainServer).SaveStreamParameters(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Main_SaveStreamParameters_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MainServer).SaveStreamParameters(ctx, req.(*SaveStreamParametersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Main_GetOverlays_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(empty.Empty)
 	if err := dec(in); err != nil {
@@ -971,6 +1004,10 @@ var Main_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StreamParameters",
 			Handler:    _Main_StreamParameters_Handler,
+		},
+		{
+			MethodName: "SaveStreamParameters",
+			Handler:    _Main_SaveStreamParameters_Handler,
 		},
 		{
 			MethodName: "GetOverlays",

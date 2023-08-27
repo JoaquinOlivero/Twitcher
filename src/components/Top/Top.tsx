@@ -112,7 +112,7 @@ const Top = ({ status, statusStreamKey, twitchCredentials, streamParams }: Props
     return (
         <>
             <div className="w-[99%] h-full flex mx-auto gap-2">
-                <Settings statusStreamKey={statusStreamKey} twitchCredentials={twitchCredentials} />
+                <Settings statusStreamKey={statusStreamKey} twitchCredentials={twitchCredentials} streamParams={streamParams} />
                 <Preview
                     status={streamStatus}
                     addVideoElement={addVideoElement}
