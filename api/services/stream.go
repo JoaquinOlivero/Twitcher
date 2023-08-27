@@ -18,6 +18,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/go-zeromq/zmq4"
 	"google.golang.org/grpc/codes"
@@ -229,6 +230,7 @@ func (s *MainServer) StartStream(ctx context.Context, in *emptypb.Empty) (*pb.St
 
 	wg.Wait()
 
+	go s.setStreamVolume()
 	// webRTC connection
 	go s.Broadcast(s.channels.sdpFromClient, s.channels.sdpForClient, s.channels.stopStream)
 
@@ -592,7 +594,7 @@ func (s *MainServer) initStream(r *io.PipeReader, twitchStreamLink string, exitA
 		"-preset", s.streamParams.preset, "-crf", "23",
 		"-map", "3:0",
 		"-c:a", "libmp3lame", "-q:a", "0",
-		"-af", `volume=`+strconv.FormatFloat(s.streamParams.volume, 'f', -1, 64)+`,volume@foo,azmq=bind_address=tcp\\\://0.0.0.0\\\:5554`,
+		"-af", `volume@foo,azmq=bind_address=tcp\\\://0.0.0.0\\\:5554`,
 		"-f", "fifo", "-fifo_format", "flv", // Fifo muxer implemented to recover stream in case a failure occurs.
 		"-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header",
 		"-g", strconv.Itoa(s.streamParams.fps*2),
@@ -840,7 +842,7 @@ func (s *MainServer) manageDataChannelMessage(msg []byte) {
 
 	err := json.Unmarshal(msg, &body)
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 
 	switch body.Type {
@@ -852,7 +854,7 @@ func (s *MainServer) manageDataChannelMessage(msg []byte) {
 
 		err := req.Dial("tcp://0.0.0.0:5554")
 		if err != nil {
-			log.Fatalf("could not dial: %v", err)
+			log.Printf("could not dial: %v", err)
 		}
 
 		volume, err := strconv.ParseFloat(body.Volume, 64)
@@ -862,20 +864,16 @@ func (s *MainServer) manageDataChannelMessage(msg []byte) {
 
 		zmqVolume := fmt.Sprintf("volume@foo volume %f", volume)
 
-		if volume > s.streamParams.volume {
-			zmqVolume = fmt.Sprintf("volume@foo volume %f", volume+1)
-		}
-
 		err = req.Send(zmq4.NewMsgString(zmqVolume))
 		if err != nil {
-			log.Fatalf("could not send command: %v", err)
+			log.Printf("could not send command: %v", err)
 		}
 
 		s.streamParams.volume = volume
 	case "volumeDb":
 		volume, err := strconv.ParseFloat(body.Volume, 64)
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
 		}
 		saveVolume(volume)
 	}
@@ -1038,4 +1036,29 @@ func twitchIngestLink() (string, error) {
 	ingestLink := strings.Replace(responseBody.Ingests[0].URL, "{stream_key}", streamKey, 1)
 
 	return ingestLink, nil
+}
+
+func (s *MainServer) setStreamVolume() {
+	req := zmq4.NewReq(context.Background())
+	defer req.Close()
+
+	for i := 0; i < 5; i++ {
+		err := req.Dial("tcp://0.0.0.0:5554")
+		if err != nil {
+			log.Printf("couldn't dial zmq. Retrying in 5 seconds. %v/5 attempts.", i+1)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		zmqVolume := fmt.Sprintf("volume@foo volume %f", s.streamParams.volume)
+
+		err = req.Send(zmq4.NewMsgString(zmqVolume))
+		if err != nil {
+			log.Printf("could not send command: %v", err)
+			break
+		}
+
+		log.Println("stream volume set")
+		break
+	}
 }
