@@ -64,6 +64,7 @@ type Channels struct {
 	stopPreview            chan struct{}
 	stopAudio              chan struct{}
 	stopStream             chan struct{}
+	stopBgVideo            chan struct{}
 }
 
 type MainServer struct {
@@ -97,6 +98,7 @@ func (s *MainServer) StartPreview(ctx context.Context, in *emptypb.Empty) (*pb.S
 	s.channels.sdpForClient = make(chan string, 300)
 	s.channels.stopPreview = make(chan struct{})
 	s.channels.stopAudio = make(chan struct{})
+	s.channels.stopBgVideo = make(chan struct{})
 	s.mu.Unlock()
 
 	err = manageNamedPipes()
@@ -135,6 +137,7 @@ func (s *MainServer) StopPreview(ctx context.Context, in *emptypb.Empty) (*pb.St
 
 	close(s.channels.stopPreview)
 	s.channels.stopAudio <- struct{}{}
+	s.channels.stopBgVideo <- struct{}{}
 	close(s.channels.swapBackgroundVideo)
 	close(s.channels.sendOverlayDataChannel)
 	close(s.channels.sdpFromClient)
@@ -181,6 +184,7 @@ func (s *MainServer) StartStream(ctx context.Context, in *emptypb.Empty) (*pb.St
 	s.channels.sdpForClient = make(chan string, 300)
 	s.channels.stopAudio = make(chan struct{})
 	s.channels.stopStream = make(chan struct{})
+	s.channels.stopBgVideo = make(chan struct{})
 	s.mu.Unlock()
 
 	// Enable alert notifications
@@ -240,6 +244,7 @@ func (s *MainServer) StopStream(ctx context.Context, in *emptypb.Empty) (*pb.Sta
 
 	close(s.channels.stopStream)
 	s.channels.stopAudio <- struct{}{}
+	s.channels.stopBgVideo <- struct{}{}
 	close(s.channels.swapBackgroundVideo)
 	close(s.channels.sendOverlayDataChannel)
 	close(s.channels.sdpFromClient)
@@ -760,8 +765,8 @@ func (s *MainServer) initBackgroundVideo(w *io.PipeWriter, wg *sync.WaitGroup) e
 	inner:
 		for {
 			select {
-			case <-s.channels.stopStream:
-			case <-s.channels.stopPreview:
+			case <-s.channels.stopBgVideo:
+				log.Println("stopping bg video")
 				exit = true
 				cmd.Process.Signal(syscall.SIGKILL)
 				w.Close()
