@@ -22,7 +22,7 @@ func (s *MainServer) TwitchSaveStreamKey(ctx context.Context, in *pb.TwitchStrea
 
 	defer db.Close()
 
-	_, err = db.Exec("UPDATE users SET stream_key=$1 WHERE id=1", in.Key)
+	_, err = db.Exec("UPDATE twitch_params SET stream_key=$1 WHERE user_id=1", in.Key)
 	if err != nil {
 		log.Println(err)
 		return &google_protobuf.Empty{}, err
@@ -42,7 +42,7 @@ func (s *MainServer) CheckTwitchStreamKey(ctx context.Context, in *google_protob
 
 	var streamKey string
 
-	err = db.QueryRow("SELECT stream_key FROM users WHERE id=1").Scan(&streamKey)
+	err = db.QueryRow("SELECT stream_key FROM twitch_params WHERE user_id=1").Scan(&streamKey)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Println(err)
@@ -64,7 +64,7 @@ func (s *MainServer) DeleteTwitchStreamKey(ctx context.Context, in *google_proto
 
 	defer db.Close()
 
-	_, err = db.Exec("UPDATE users SET stream_key=$1 WHERE id=1", nil)
+	_, err = db.Exec("UPDATE twitch_params SET stream_key=$1 WHERE user_id=1", nil)
 	if err != nil {
 		log.Println(err)
 		return &google_protobuf.Empty{}, err
@@ -81,7 +81,7 @@ func (s *MainServer) SaveTwitchDevCredentials(ctx context.Context, in *pb.DevCre
 
 	defer db.Close()
 
-	_, err = db.Exec("UPDATE users SET client_id=$1, secret=$2 WHERE id=1", in.ClientId, in.Secret)
+	_, err = db.Exec("UPDATE twitch_params SET client_id=$1, secret=$2 WHERE user_id=1", in.ClientId, in.Secret)
 	if err != nil {
 		log.Println(err)
 		return &google_protobuf.Empty{}, err
@@ -101,7 +101,7 @@ func (s *MainServer) CheckTwitchDevCredentials(ctx context.Context, in *google_p
 
 	var clientId string
 
-	err = db.QueryRow("SELECT client_id FROM users WHERE id=1").Scan(&clientId)
+	err = db.QueryRow("SELECT client_id FROM twitch_params WHERE user_id=1").Scan(&clientId)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Println(err)
@@ -122,7 +122,7 @@ func (s *MainServer) DeleteTwitchDevCredentials(ctx context.Context, in *google_
 
 	defer db.Close()
 
-	_, err = db.Exec("UPDATE users SET client_id=$1, secret=$1, access_token=$1, refresh_token=$1 WHERE id=1", nil)
+	_, err = db.Exec("UPDATE twitch_params SET client_id=$1, secret=$1, access_token=$1, refresh_token=$1 WHERE user_id=1", nil)
 	if err != nil {
 		log.Println(err)
 		return &google_protobuf.Empty{}, err
@@ -142,7 +142,7 @@ func (s *MainServer) TwitchAccessToken(ctx context.Context, in *pb.UserAuth) (*g
 
 	var clientId, secret string
 
-	err = db.QueryRow("SELECT client_id, secret FROM users WHERE id=1").Scan(&clientId, &secret)
+	err = db.QueryRow("SELECT client_id, secret FROM twitch_params WHERE user_id=1").Scan(&clientId, &secret)
 	if err != nil {
 		return &google_protobuf.Empty{}, err
 	}
@@ -239,7 +239,7 @@ func saveClient(clientId, secret, code string) error {
 
 	defer db.Close()
 
-	_, err = db.Exec("UPDATE users SET access_token=$1, refresh_token=$2, twitch_user_name=$3, twitch_user_id=$4 WHERE id=1", responseBody.AccessToken, responseBody.RefreshToken, twitchResp.Data[0].Username, twitchResp.Data[0].Id)
+	_, err = db.Exec("UPDATE twitch_params SET access_token=$1, refresh_token=$2, twitch_user_name=$3, twitch_user_id=$4 WHERE user_id=1", responseBody.AccessToken, responseBody.RefreshToken, twitchResp.Data[0].Username, twitchResp.Data[0].Id)
 	if err != nil {
 		return err
 	}

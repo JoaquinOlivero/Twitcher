@@ -92,7 +92,7 @@ func checkDatabase() error {
 	}
 
 	// Create tables
-	db, err := sql.Open("sqlite3", "data.db")
+	db, err := sql.Open("sqlite3", "files/data.db")
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -135,13 +135,6 @@ func checkDatabase() error {
 	_, err = db.Exec(`
 		CREATE TABLE users (
 			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-			twitch_user_id TEXT,
-			twitch_user_name TEXT,
-			client_id TEXT,
-			secret TEXT,
-			access_token TEXT,
-			refresh_token TEXT,
-			stream_key TEXT,
 			preset TEXT CHECK (preset IN ("ultrafast", "superfast", "veryfast", "faster","fast", "medium", "slow", "slower", "veryslow")) DEFAULT "medium",
 			width INTEGER DEFAULT 1280,
     		height INTEGER DEFAULT 720,
@@ -166,9 +159,56 @@ func checkDatabase() error {
 		return err
 	}
 
+	_, err = db.Exec(`
+		CREATE TABLE youtube_params (
+			user_id INTEGER,
+			enable INTEGER NOT NULL DEFAULT 0,
+			stream_key VARCHAR(255) NOT NULL DEFAULT "",
+			stream_url VARCHAR(255) NOT NULL DEFAULT "",
+			CONSTRAINT FK_user FOREIGN KEY (user_id) REFERENCES users (id)
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		CREATE TABLE twitch_params (
+			user_id INTEGER,
+			enable INTEGER NOT NULL DEFAULT 0,
+			twitch_user_id VARCHAR(255),
+			twitch_user_name VARCHAR(255),
+			client_id VARCHAR(255),
+			secret VARCHAR(255),
+			access_token VARCHAR(255),
+			refresh_token VARCHAR(255),
+			stream_key VARCHAR(255),
+			CONSTRAINT FK_user FOREIGN KEY (user_id) REFERENCES users (id)
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
 	// Insert default user data.
 	_, err = db.Exec(`
 		INSERT INTO users (id) VALUES (1)
+	`)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO youtube_params (user_id,enable) VALUES (1,0)
+	`)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO twitch_params (user_id,enable) VALUES (1,0)
 	`)
 
 	if err != nil {

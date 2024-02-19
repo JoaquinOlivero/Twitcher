@@ -286,7 +286,7 @@ func validateToken() (ValidateAccessToken, error) {
 	defer db.Close()
 
 	var accessToken string
-	err = db.QueryRow("SELECT access_token FROM users WHERE id = 1").Scan(&accessToken)
+	err = db.QueryRow("SELECT access_token FROM twitch_params WHERE user_id = 1").Scan(&accessToken)
 	if err == sql.ErrNoRows {
 		err := errors.New("access_token not found. Generate it by running: twitcher api")
 		return ValidateAccessToken{}, err
@@ -353,7 +353,7 @@ func refreshToken() (ValidateAccessToken, error) {
 	defer db.Close()
 	var clientId, secret, refreshToken string
 
-	err = db.QueryRow("SELECT client_id, secret, refresh_token FROM users WHERE id = 1").Scan(&clientId, &secret, &refreshToken)
+	err = db.QueryRow("SELECT client_id, secret, refresh_token FROM twitch_params WHERE user_id = 1").Scan(&clientId, &secret, &refreshToken)
 	if err != nil {
 		return ValidateAccessToken{}, err
 	}
@@ -423,7 +423,7 @@ func createEventSubs(sessionId, URL string) error {
 
 	defer db.Close()
 
-	err = db.QueryRow("SELECT twitch_user_id, access_token, client_id FROM users WHERE id = 1").Scan(&twitchUserId, &accessToken, &clientId)
+	err = db.QueryRow("SELECT twitch_user_id, access_token, client_id FROM twitch_params WHERE user_id = 1").Scan(&twitchUserId, &accessToken, &clientId)
 	if err != nil {
 		return err
 	}

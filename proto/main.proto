@@ -32,6 +32,14 @@ service Main {
     rpc StreamParameters (google.protobuf.Empty) returns (StreamParametersResponse) {}; 
     rpc SaveStreamParameters (SaveStreamParametersRequest) returns (google.protobuf.Empty) {}; 
 
+    rpc YoutubeSaveStreamKey (YoutubeStreamKey) returns (google.protobuf.Empty) {};
+    rpc CheckYoutubeStreamKey (google.protobuf.Empty) returns (YoutubeStreamKey) {};
+    rpc DeleteYoutubeStreamKey (google.protobuf.Empty) returns (google.protobuf.Empty) {};
+    rpc YoutubeSaveStreamUrl (YoutubeStreamUrl) returns (google.protobuf.Empty) {};
+    rpc CheckYoutubeStreamUrl (google.protobuf.Empty) returns (YoutubeStreamUrl) {};
+    rpc DeleteYoutubeStreamUrl (google.protobuf.Empty) returns (google.protobuf.Empty) {};
+    rpc CheckYoutubeParams (google.protobuf.Empty) returns (YoutubeParams) {};
+
     rpc GetOverlays (google.protobuf.Empty) returns (Overlays) {};
 
     rpc BackgroundVideos (google.protobuf.Empty) returns (BackgroundVideosResponse) {};
@@ -103,6 +111,23 @@ message SaveStreamParametersRequest {
     int32 height = 2;
     int32 fps = 3;
     string preset = 4;
+}
+
+message YoutubeStreamKey {
+    string key = 1;
+    bool active = 2;
+}
+
+message YoutubeStreamUrl {
+    string url = 1;
+    bool active = 2;
+}
+
+message YoutubeParams {
+    string key = 1;
+    string url = 2;
+    bool enabled = 3;
+    bool isKeyActive = 4;
 }
 
 message Overlay {

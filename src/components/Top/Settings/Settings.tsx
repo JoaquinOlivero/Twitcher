@@ -4,14 +4,17 @@ import TwitchSettings from './TwitchSettings/TwitchSettings'
 import { TwitchStreamKey__Output } from '@/pb/service/TwitchStreamKey'
 import StreamParams from './StreamParams/StreamParams'
 import { StreamParametersResponse__Output } from '@/pb/service/StreamParametersResponse'
+import YoutubeSettings from './YoutubeSettings/YoutubeSettings'
+import { YoutubeParams__Output } from '@/pb/service/YoutubeParams'
 
 type Props = {
     statusStreamKey: TwitchStreamKey__Output | undefined
     twitchCredentials: DevCredentials__Output | undefined
+    youtubeParams: YoutubeParams__Output | undefined
     streamParams: StreamParametersResponse__Output | undefined
 }
 
-const Settings = ({ statusStreamKey, twitchCredentials, streamParams }: Props) => {
+const Settings = ({ statusStreamKey, twitchCredentials, youtubeParams, streamParams }: Props) => {
 
     return (
         <>
@@ -26,6 +29,7 @@ const Settings = ({ statusStreamKey, twitchCredentials, streamParams }: Props) =
 
                         <AddSongs />
                         <TwitchSettings statusStreamKey={statusStreamKey} twitchCredentials={twitchCredentials} />
+                        <YoutubeSettings params={youtubeParams} />
                         <StreamParams streamParams={streamParams} />
                     </div>
                 </div>

@@ -10,15 +10,17 @@ import { DevCredentials__Output } from "@/pb/service/DevCredentials";
 import { checkStatus } from "@/actions";
 import { usePC } from "@/context/pcContext";
 import { StreamParametersResponse__Output } from "@/pb/service/StreamParametersResponse";
+import { YoutubeParams__Output } from "@/pb/service/YoutubeParams";
 
 type Props = {
     status: StatusResponse__Output | undefined
     statusStreamKey: TwitchStreamKey__Output | undefined
     twitchCredentials: DevCredentials__Output | undefined
+    youtubeParams: YoutubeParams__Output | undefined
     streamParams: StreamParametersResponse__Output | undefined
 }
 
-const Top = ({ status, statusStreamKey, twitchCredentials, streamParams }: Props) => {
+const Top = ({ status, statusStreamKey, twitchCredentials, youtubeParams, streamParams }: Props) => {
     const { setIsPreviewLoaded, setVideoElementSize } = usePC();
     const vRef = useRef<HTMLDivElement>(null)
     const [streamStatus, setStreamStatus] = useState<StatusResponse__Output | undefined>(status)
@@ -112,7 +114,7 @@ const Top = ({ status, statusStreamKey, twitchCredentials, streamParams }: Props
     return (
         <>
             <div className="w-[99%] h-full flex mx-auto gap-2">
-                <Settings statusStreamKey={statusStreamKey} twitchCredentials={twitchCredentials} streamParams={streamParams} />
+                <Settings statusStreamKey={statusStreamKey} youtubeParams={youtubeParams} twitchCredentials={twitchCredentials} streamParams={streamParams} />
                 <Preview
                     status={streamStatus}
                     addVideoElement={addVideoElement}

@@ -18,6 +18,9 @@ import type { TwitchStreamKey as _service_TwitchStreamKey, TwitchStreamKey__Outp
 import type { UploadVideoRequest as _service_UploadVideoRequest, UploadVideoRequest__Output as _service_UploadVideoRequest__Output } from '../service/UploadVideoRequest';
 import type { UploadVideoResponse as _service_UploadVideoResponse, UploadVideoResponse__Output as _service_UploadVideoResponse__Output } from '../service/UploadVideoResponse';
 import type { UserAuth as _service_UserAuth, UserAuth__Output as _service_UserAuth__Output } from '../service/UserAuth';
+import type { YoutubeParams as _service_YoutubeParams, YoutubeParams__Output as _service_YoutubeParams__Output } from '../service/YoutubeParams';
+import type { YoutubeStreamKey as _service_YoutubeStreamKey, YoutubeStreamKey__Output as _service_YoutubeStreamKey__Output } from '../service/YoutubeStreamKey';
+import type { YoutubeStreamUrl as _service_YoutubeStreamUrl, YoutubeStreamUrl__Output as _service_YoutubeStreamUrl__Output } from '../service/YoutubeStreamUrl';
 
 export interface MainClient extends grpc.Client {
   BackgroundVideos(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_BackgroundVideosResponse__Output>): grpc.ClientUnaryCall;
@@ -46,6 +49,33 @@ export interface MainClient extends grpc.Client {
   checkTwitchStreamKey(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_TwitchStreamKey__Output>): grpc.ClientUnaryCall;
   checkTwitchStreamKey(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_TwitchStreamKey__Output>): grpc.ClientUnaryCall;
   checkTwitchStreamKey(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_TwitchStreamKey__Output>): grpc.ClientUnaryCall;
+  
+  CheckYoutubeParams(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_YoutubeParams__Output>): grpc.ClientUnaryCall;
+  CheckYoutubeParams(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_YoutubeParams__Output>): grpc.ClientUnaryCall;
+  CheckYoutubeParams(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_YoutubeParams__Output>): grpc.ClientUnaryCall;
+  CheckYoutubeParams(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_YoutubeParams__Output>): grpc.ClientUnaryCall;
+  checkYoutubeParams(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_YoutubeParams__Output>): grpc.ClientUnaryCall;
+  checkYoutubeParams(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_YoutubeParams__Output>): grpc.ClientUnaryCall;
+  checkYoutubeParams(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_YoutubeParams__Output>): grpc.ClientUnaryCall;
+  checkYoutubeParams(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_YoutubeParams__Output>): grpc.ClientUnaryCall;
+  
+  CheckYoutubeStreamKey(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_YoutubeStreamKey__Output>): grpc.ClientUnaryCall;
+  CheckYoutubeStreamKey(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_YoutubeStreamKey__Output>): grpc.ClientUnaryCall;
+  CheckYoutubeStreamKey(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_YoutubeStreamKey__Output>): grpc.ClientUnaryCall;
+  CheckYoutubeStreamKey(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_YoutubeStreamKey__Output>): grpc.ClientUnaryCall;
+  checkYoutubeStreamKey(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_YoutubeStreamKey__Output>): grpc.ClientUnaryCall;
+  checkYoutubeStreamKey(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_YoutubeStreamKey__Output>): grpc.ClientUnaryCall;
+  checkYoutubeStreamKey(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_YoutubeStreamKey__Output>): grpc.ClientUnaryCall;
+  checkYoutubeStreamKey(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_YoutubeStreamKey__Output>): grpc.ClientUnaryCall;
+  
+  CheckYoutubeStreamUrl(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_YoutubeStreamUrl__Output>): grpc.ClientUnaryCall;
+  CheckYoutubeStreamUrl(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_YoutubeStreamUrl__Output>): grpc.ClientUnaryCall;
+  CheckYoutubeStreamUrl(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_YoutubeStreamUrl__Output>): grpc.ClientUnaryCall;
+  CheckYoutubeStreamUrl(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_YoutubeStreamUrl__Output>): grpc.ClientUnaryCall;
+  checkYoutubeStreamUrl(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_YoutubeStreamUrl__Output>): grpc.ClientUnaryCall;
+  checkYoutubeStreamUrl(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_YoutubeStreamUrl__Output>): grpc.ClientUnaryCall;
+  checkYoutubeStreamUrl(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_service_YoutubeStreamUrl__Output>): grpc.ClientUnaryCall;
+  checkYoutubeStreamUrl(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_service_YoutubeStreamUrl__Output>): grpc.ClientUnaryCall;
   
   CreateSongPlaylist(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_service_SongPlaylist__Output>): grpc.ClientUnaryCall;
   CreateSongPlaylist(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_service_SongPlaylist__Output>): grpc.ClientUnaryCall;
@@ -91,6 +121,24 @@ export interface MainClient extends grpc.Client {
   deleteTwitchStreamKey(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   deleteTwitchStreamKey(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   deleteTwitchStreamKey(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  
+  DeleteYoutubeStreamKey(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  DeleteYoutubeStreamKey(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  DeleteYoutubeStreamKey(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  DeleteYoutubeStreamKey(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  deleteYoutubeStreamKey(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  deleteYoutubeStreamKey(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  deleteYoutubeStreamKey(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  deleteYoutubeStreamKey(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  
+  DeleteYoutubeStreamUrl(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  DeleteYoutubeStreamUrl(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  DeleteYoutubeStreamUrl(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  DeleteYoutubeStreamUrl(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  deleteYoutubeStreamUrl(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  deleteYoutubeStreamUrl(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  deleteYoutubeStreamUrl(argument: _google_protobuf_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  deleteYoutubeStreamUrl(argument: _google_protobuf_Empty, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   
   FindNewSongsNCS(argument: _google_protobuf_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
   FindNewSongsNCS(argument: _google_protobuf_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
@@ -245,6 +293,24 @@ export interface MainClient extends grpc.Client {
   uploadVideo(options: grpc.CallOptions, callback: grpc.requestCallback<_service_UploadVideoResponse__Output>): grpc.ClientWritableStream<_service_UploadVideoRequest>;
   uploadVideo(callback: grpc.requestCallback<_service_UploadVideoResponse__Output>): grpc.ClientWritableStream<_service_UploadVideoRequest>;
   
+  YoutubeSaveStreamKey(argument: _service_YoutubeStreamKey, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  YoutubeSaveStreamKey(argument: _service_YoutubeStreamKey, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  YoutubeSaveStreamKey(argument: _service_YoutubeStreamKey, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  YoutubeSaveStreamKey(argument: _service_YoutubeStreamKey, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  youtubeSaveStreamKey(argument: _service_YoutubeStreamKey, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  youtubeSaveStreamKey(argument: _service_YoutubeStreamKey, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  youtubeSaveStreamKey(argument: _service_YoutubeStreamKey, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  youtubeSaveStreamKey(argument: _service_YoutubeStreamKey, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  
+  YoutubeSaveStreamUrl(argument: _service_YoutubeStreamUrl, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  YoutubeSaveStreamUrl(argument: _service_YoutubeStreamUrl, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  YoutubeSaveStreamUrl(argument: _service_YoutubeStreamUrl, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  YoutubeSaveStreamUrl(argument: _service_YoutubeStreamUrl, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  youtubeSaveStreamUrl(argument: _service_YoutubeStreamUrl, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  youtubeSaveStreamUrl(argument: _service_YoutubeStreamUrl, metadata: grpc.Metadata, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  youtubeSaveStreamUrl(argument: _service_YoutubeStreamUrl, options: grpc.CallOptions, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  youtubeSaveStreamUrl(argument: _service_YoutubeStreamUrl, callback: grpc.requestCallback<_google_protobuf_Empty__Output>): grpc.ClientUnaryCall;
+  
 }
 
 export interface MainHandlers extends grpc.UntypedServiceImplementation {
@@ -253,6 +319,12 @@ export interface MainHandlers extends grpc.UntypedServiceImplementation {
   CheckTwitchDevCredentials: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_DevCredentials>;
   
   CheckTwitchStreamKey: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_TwitchStreamKey>;
+  
+  CheckYoutubeParams: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_YoutubeParams>;
+  
+  CheckYoutubeStreamKey: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_YoutubeStreamKey>;
+  
+  CheckYoutubeStreamUrl: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_YoutubeStreamUrl>;
   
   CreateSongPlaylist: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _service_SongPlaylist>;
   
@@ -263,6 +335,10 @@ export interface MainHandlers extends grpc.UntypedServiceImplementation {
   DeleteTwitchDevCredentials: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _google_protobuf_Empty>;
   
   DeleteTwitchStreamKey: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _google_protobuf_Empty>;
+  
+  DeleteYoutubeStreamKey: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _google_protobuf_Empty>;
+  
+  DeleteYoutubeStreamUrl: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _google_protobuf_Empty>;
   
   FindNewSongsNCS: grpc.handleUnaryCall<_google_protobuf_Empty__Output, _google_protobuf_Empty>;
   
@@ -298,17 +374,26 @@ export interface MainHandlers extends grpc.UntypedServiceImplementation {
   
   UploadVideo: grpc.handleClientStreamingCall<_service_UploadVideoRequest__Output, _service_UploadVideoResponse>;
   
+  YoutubeSaveStreamKey: grpc.handleUnaryCall<_service_YoutubeStreamKey__Output, _google_protobuf_Empty>;
+  
+  YoutubeSaveStreamUrl: grpc.handleUnaryCall<_service_YoutubeStreamUrl__Output, _google_protobuf_Empty>;
+  
 }
 
 export interface MainDefinition extends grpc.ServiceDefinition {
   BackgroundVideos: MethodDefinition<_google_protobuf_Empty, _service_BackgroundVideosResponse, _google_protobuf_Empty__Output, _service_BackgroundVideosResponse__Output>
   CheckTwitchDevCredentials: MethodDefinition<_google_protobuf_Empty, _service_DevCredentials, _google_protobuf_Empty__Output, _service_DevCredentials__Output>
   CheckTwitchStreamKey: MethodDefinition<_google_protobuf_Empty, _service_TwitchStreamKey, _google_protobuf_Empty__Output, _service_TwitchStreamKey__Output>
+  CheckYoutubeParams: MethodDefinition<_google_protobuf_Empty, _service_YoutubeParams, _google_protobuf_Empty__Output, _service_YoutubeParams__Output>
+  CheckYoutubeStreamKey: MethodDefinition<_google_protobuf_Empty, _service_YoutubeStreamKey, _google_protobuf_Empty__Output, _service_YoutubeStreamKey__Output>
+  CheckYoutubeStreamUrl: MethodDefinition<_google_protobuf_Empty, _service_YoutubeStreamUrl, _google_protobuf_Empty__Output, _service_YoutubeStreamUrl__Output>
   CreateSongPlaylist: MethodDefinition<_google_protobuf_Empty, _service_SongPlaylist, _google_protobuf_Empty__Output, _service_SongPlaylist__Output>
   CurrentSongPlaylist: MethodDefinition<_google_protobuf_Empty, _service_SongPlaylist, _google_protobuf_Empty__Output, _service_SongPlaylist__Output>
   DeleteBackgroundVideo: MethodDefinition<_service_BackgroundVideo, _google_protobuf_Empty, _service_BackgroundVideo__Output, _google_protobuf_Empty__Output>
   DeleteTwitchDevCredentials: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
   DeleteTwitchStreamKey: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
+  DeleteYoutubeStreamKey: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
+  DeleteYoutubeStreamUrl: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
   FindNewSongsNCS: MethodDefinition<_google_protobuf_Empty, _google_protobuf_Empty, _google_protobuf_Empty__Output, _google_protobuf_Empty__Output>
   GetOverlays: MethodDefinition<_google_protobuf_Empty, _service_Overlays, _google_protobuf_Empty__Output, _service_Overlays__Output>
   Preview: MethodDefinition<_service_SDP, _service_SDP, _service_SDP__Output, _service_SDP__Output>
@@ -326,4 +411,6 @@ export interface MainDefinition extends grpc.ServiceDefinition {
   TwitchSaveStreamKey: MethodDefinition<_service_TwitchStreamKey, _google_protobuf_Empty, _service_TwitchStreamKey__Output, _google_protobuf_Empty__Output>
   UpdateSongPlaylist: MethodDefinition<_service_SongPlaylist, _google_protobuf_Empty, _service_SongPlaylist__Output, _google_protobuf_Empty__Output>
   UploadVideo: MethodDefinition<_service_UploadVideoRequest, _service_UploadVideoResponse, _service_UploadVideoRequest__Output, _service_UploadVideoResponse__Output>
+  YoutubeSaveStreamKey: MethodDefinition<_service_YoutubeStreamKey, _google_protobuf_Empty, _service_YoutubeStreamKey__Output, _google_protobuf_Empty__Output>
+  YoutubeSaveStreamUrl: MethodDefinition<_service_YoutubeStreamUrl, _google_protobuf_Empty, _service_YoutubeStreamUrl__Output, _google_protobuf_Empty__Output>
 }

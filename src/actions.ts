@@ -16,6 +16,7 @@ import { BackgroundVideo } from './pb/service/BackgroundVideo';
 import { StreamResponse__Output } from './pb/service/StreamResponse';
 import { StreamParametersResponse__Output } from './pb/service/StreamParametersResponse';
 import { SaveStreamParametersRequest } from './pb/service/SaveStreamParametersRequest';
+import { YoutubeParams__Output } from './pb/service/YoutubeParams';
 
 const PROTO_FILE = "../proto/main.proto"
 
@@ -790,4 +791,149 @@ export const saveStreamParams = async (params: SaveStreamParametersRequest) => {
     })
 
     return res
+}
+
+export const saveYoutubeStreamKey = async (streamKey: string) => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    const success: boolean = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                console.log(err)
+                resolve(false)
+            }
+
+            client.YoutubeSaveStreamKey({ key: streamKey }, (err, res) => {
+                if (err) {
+                    console.log(err)
+                    resolve(false)
+                }
+                if (res !== undefined) {
+                    resolve(true)
+                } else {
+                    resolve(false)
+                }
+            })
+
+        })
+    })
+
+    return success
+}
+
+export const deleteYoutubeStreamKey = async () => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    const success: boolean = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                console.log(err)
+                resolve(false)
+            }
+
+            client.DeleteYoutubeStreamKey({}, (err, res) => {
+                if (err) {
+                    resolve(false)
+                    console.log(err)
+                }
+                if (res !== undefined) {
+                    resolve(true)
+                } else {
+                    resolve(false)
+                }
+            })
+
+        })
+    })
+
+    return success
+}
+
+export const saveYoutubeStreamUrl = async (streamUrl: string) => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    const success: boolean = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                console.log(err)
+                resolve(false)
+            }
+
+            client.YoutubeSaveStreamUrl({ url: streamUrl }, (err, res) => {
+                if (err) {
+                    console.log(err)
+                    resolve(false)
+                }
+                if (res !== undefined) {
+                    resolve(true)
+                } else {
+                    resolve(false)
+                }
+            })
+
+        })
+    })
+
+    return success
+}
+
+export const deleteYoutubeStreamUrl = async () => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    const success: boolean = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                console.log(err)
+                resolve(false)
+            }
+
+            client.DeleteYoutubeStreamUrl({}, (err, res) => {
+                if (err) {
+                    resolve(false)
+                    console.log(err)
+                }
+                if (res !== undefined) {
+                    resolve(true)
+                } else {
+                    resolve(false)
+                }
+            })
+
+        })
+    })
+
+    return success
+}
+
+export const checkYoutubeParams = async () => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    const status: YoutubeParams__Output | undefined = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                resolve(undefined)
+            }
+
+            client.CheckYoutubeParams({}, (err, res) => {
+                if (err) {
+                    const status = { enabled: false, isKeyActive: false }
+                    resolve(status)
+                }
+                if (res !== undefined) {
+                    resolve(res)
+                } else {
+                    const status = { enabled: false, isKeyActive: false }
+                    resolve(status)
+                }
+            })
+
+        })
+    })
+
+    return status
 }

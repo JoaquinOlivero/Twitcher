@@ -1026,7 +1026,7 @@ func twitchIngestLink() (string, error) {
 	}
 
 	var streamKey string
-	err = db.QueryRow("SELECT stream_key FROM users WHERE id=1").Scan(&streamKey)
+	err = db.QueryRow("SELECT stream_key FROM twitch_params WHERE user_id=1").Scan(&streamKey)
 	if err != nil {
 		return "", err
 	}

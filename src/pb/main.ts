@@ -34,6 +34,9 @@ export interface ProtoGrpcType {
     UploadVideoResponse: MessageTypeDefinition
     UserAuth: MessageTypeDefinition
     VideoInfo: MessageTypeDefinition
+    YoutubeParams: MessageTypeDefinition
+    YoutubeStreamKey: MessageTypeDefinition
+    YoutubeStreamUrl: MessageTypeDefinition
   }
 }
 
