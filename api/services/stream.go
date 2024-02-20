@@ -2,7 +2,6 @@ package service
 
 import (
 	"Twitcher/pb"
-	"Twitcher/twitchApi"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -189,16 +188,18 @@ func (s *MainServer) StartStream(ctx context.Context, in *emptypb.Empty) (*pb.St
 	s.mu.Unlock()
 
 	// Enable alert notifications
-	var wgAlerts sync.WaitGroup
-	wgAlerts.Add(1)
+	// var wgAlerts sync.WaitGroup
+	// wgAlerts.Add(1)
 
-	exitAlerts := make(chan struct{})
+	// exitAlerts := make(chan struct{})
 
-	go twitchApi.Alerts(&wgAlerts, exitAlerts)
+	// go twitchApi.Alerts(&wgAlerts, exitAlerts)
 
-	wgAlerts.Wait()
-	// Get ingest server link
-	twitchStreamLink, err := twitchIngestLink()
+	// wgAlerts.Wait()
+
+	// Get ffmpeg command for enabled streaming platforms (twitch, youtube).
+
+	streamCommands, err := s.ffmpegStreamCommands()
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, status.Errorf(
@@ -206,9 +207,20 @@ func (s *MainServer) StartStream(ctx context.Context, in *emptypb.Empty) (*pb.St
 				fmt.Sprintln("stream key not found."),
 			)
 		}
-
-		return nil, err
 	}
+
+	// // Get ingest server link
+	// twitchStreamLink, err := twitchIngestLink()
+	// if err != nil {
+	// 	if err == sql.ErrNoRows {
+	// 		return nil, status.Errorf(
+	// 			codes.FailedPrecondition,
+	// 			fmt.Sprintln("stream key not found."),
+	// 		)
+	// 	}
+
+	// 	return nil, err
+	// }
 
 	err = manageNamedPipes()
 	if err != nil {
@@ -226,7 +238,8 @@ func (s *MainServer) StartStream(ctx context.Context, in *emptypb.Empty) (*pb.St
 	go s.initBackgroundVideo(bgW, &wg)
 
 	// Stream go routine.
-	go s.initStream(bgR, twitchStreamLink, exitAlerts, &wg)
+	// go s.initStream(bgR, twitchStreamLink, exitAlerts, &wg)
+	go s.initStream(bgR, streamCommands, &wg)
 
 	wg.Wait()
 
@@ -565,7 +578,8 @@ func (s *MainServer) initPreview(r *io.PipeReader, wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (s *MainServer) initStream(r *io.PipeReader, twitchStreamLink string, exitAlerts chan<- struct{}, wg *sync.WaitGroup) error {
+// func (s *MainServer) initStream(r *io.PipeReader, twitchStreamLink string, exitAlerts chan<- struct{}, wg *sync.WaitGroup) error {
+func (s *MainServer) initStream(r *io.PipeReader, streamCommands []string, wg *sync.WaitGroup) error {
 	defer log.Println("stream stopped")
 
 	// scaling filter
@@ -573,16 +587,18 @@ func (s *MainServer) initStream(r *io.PipeReader, twitchStreamLink string, exitA
 	h := strconv.Itoa(s.streamParams.height)
 	sf := fmt.Sprintf(`w=min(iw*%v/ih\,%v):h=min(%v\,ih*%v/iw),pad=w=%v:h=%v:x=(%v-iw)/2:y=(%v-ih)/2`, h, w, h, w, w, h, w, h)
 
-	cmd := exec.Command("ffmpeg", "-hide_banner", "-y",
+	preparedCommand := []string{"-hide_banner", "-y",
 		"-r", strconv.Itoa(s.streamParams.fps),
 		"-stream_loop", "-1",
 		"-i", "pipe:0",
 		"-thread_queue_size", "128", "-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
-		"-thread_queue_size", "8", "-i", "files/stream/alert",
-		"-filter_complex", `[0]scale=`+sf+`[v1];[v1][1]overlay=0:0[v2];[v2][2]overlay=W-w+10:H-h+60[v3];[v3]zmq[vout]`,
+		// "-thread_queue_size", "8", "-i", "files/stream/alert",
+		// "-filter_complex", `[0]scale=` + sf + `[v1];[v1][1]overlay=0:0[v2];[v2][2]overlay=W-w+10:H-h+60[v3];[v3]zmq[vout]`,
+		"-filter_complex", `[0]scale=` + sf + `[v1];[v1][1]overlay=0:0[v2];[v2]zmq[vout]`,
 		"-i", "files/stream/audio",
 
-		"-map", "3:0",
+		// "-map", "3:0",
+		"-map", "2:0",
 		"-c:a", "copy", "-page_duration", "2000", "-f", "ogg", "files/stream/previewAudio",
 
 		"-map", "0:0",
@@ -592,21 +608,50 @@ func (s *MainServer) initStream(r *io.PipeReader, twitchStreamLink string, exitA
 		"-c:v", "libx264",
 		"-fps_mode", "passthrough",
 		"-preset", s.streamParams.preset, "-crf", "23",
-		"-map", "3:0",
+		// "-map", "3:0",
+		"-map", "2:0",
 		"-c:a", "libmp3lame", "-q:a", "0",
-		"-af", `volume@foo,azmq=bind_address=tcp\\\://0.0.0.0\\\:5554`,
-		"-f", "fifo", "-fifo_format", "flv", // Fifo muxer implemented to recover stream in case a failure occurs.
-		"-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header",
-		"-g", strconv.Itoa(s.streamParams.fps*2),
-		"-keyint_min", strconv.Itoa(s.streamParams.fps*2), "-force_key_frames", "expr:gte(t,n_forced*2)",
-		"-flvflags", "no_duration_filesize",
-		twitchStreamLink,
-	)
+		"-af", `volume@foo,azmq=bind_address=tcp\\\://0.0.0.0\\\:5554`}
+
+	preparedCommand = append(preparedCommand, streamCommands...)
+	// cmd := exec.Command("ffmpeg", "-hide_banner", "-y",
+	// 	"-r", strconv.Itoa(s.streamParams.fps),
+	// 	"-stream_loop", "-1",
+	// 	"-i", "pipe:0",
+	// 	"-thread_queue_size", "128", "-f", "image2", "-loop", "1", "-i", "files/stream/stream.png", // Overlay that shows the song's cover. The "stream.png" file will be atomically changed according to the song that is being currently played.
+	// 	"-thread_queue_size", "8", "-i", "files/stream/alert",
+	// 	"-filter_complex", `[0]scale=`+sf+`[v1];[v1][1]overlay=0:0[v2];[v2][2]overlay=W-w+10:H-h+60[v3];[v3]zmq[vout]`,
+	// 	"-i", "files/stream/audio",
+
+	// 	"-map", "3:0",
+	// 	"-c:a", "copy", "-page_duration", "2000", "-f", "ogg", "files/stream/previewAudio",
+
+	// 	"-map", "0:0",
+	// 	"-c:v", "copy", "-f", "h264", "files/stream/previewVideo",
+
+	// 	"-map", "[vout]",
+	// 	"-c:v", "libx264",
+	// 	"-fps_mode", "passthrough",
+	// 	"-preset", s.streamParams.preset, "-crf", "23",
+	// 	"-map", "3:0",
+	// 	"-c:a", "libmp3lame", "-q:a", "0",
+	// 	"-af", `volume@foo,azmq=bind_address=tcp\\\://0.0.0.0\\\:5554`,
+	// 	"-f", "fifo", "-fifo_format", "flv", // Fifo muxer implemented to recover stream in case a failure occurs.
+	// 	"-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header",
+	// 	"-g", strconv.Itoa(s.streamParams.fps*2),
+	// 	"-keyint_min", strconv.Itoa(s.streamParams.fps*2), "-force_key_frames", "expr:gte(t,n_forced*2)",
+	// 	"-flvflags", "no_duration_filesize",
+	// twitchStreamLink,
+	// )
+
+	cmd := exec.Command("ffmpeg", preparedCommand...)
 
 	cmd.Stdin = r
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}
+
+	// cmd.Stderr = os.Stderr
 
 	cmd.Start()
 
@@ -619,8 +664,8 @@ func (s *MainServer) initStream(r *io.PipeReader, twitchStreamLink string, exitA
 	// Wait until stop command is received.
 	<-s.channels.stopStream
 
-	log.Println("disconnecting from Twitch's websocket server")
-	exitAlerts <- struct{}{}
+	// log.Println("disconnecting from Twitch's websocket server")
+	// exitAlerts <- struct{}{}
 
 	s.mu.Lock()
 	s.status.stream = false
@@ -991,6 +1036,84 @@ func getStreamParams() (StreamParams, error) {
 	return streamParams, nil
 }
 
+func (s *MainServer) ffmpegStreamCommands() ([]string, error) {
+
+	var streamCommands []string
+
+	db, err := sql.Open("sqlite3", "files/data.db")
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if Twitch is enabled
+	var twitch bool
+	err = db.QueryRow("SELECT enable FROM twitch_params WHERE user_id=1").Scan(&twitch)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	if twitch {
+		defaultStreamCommand := s.singleStreamCommand()
+		streamCommands = append(streamCommands, defaultStreamCommand...)
+
+		// Get ingest server link
+		twitchStreamLink, err := twitchIngestLink()
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return nil, status.Errorf(
+					codes.FailedPrecondition,
+					fmt.Sprintln("stream key not found."),
+				)
+			}
+
+			return nil, err
+		}
+
+		streamCommands = append(streamCommands, twitchStreamLink)
+	}
+
+	// Check if Youtube is enabled
+	var youtube bool
+	err = db.QueryRow("SELECT enable FROM youtube_params WHERE user_id=1").Scan(&youtube)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	if youtube {
+		defaultStreamCommand := s.singleStreamCommand()
+		streamCommands = append(streamCommands, defaultStreamCommand...)
+
+		// Get youtube stream link
+		youtubeStreamLink, err := youtubeIngestLink()
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return nil, status.Errorf(
+					codes.FailedPrecondition,
+					fmt.Sprintln("stream key not found."),
+				)
+			}
+
+			return nil, err
+		}
+
+		streamCommands = append(streamCommands, youtubeStreamLink)
+	}
+
+	db.Close()
+
+	return streamCommands, nil
+}
+
+func (s *MainServer) singleStreamCommand() []string {
+	return []string{"-f", "fifo", "-fifo_format", "flv", // Fifo muxer implemented to recover stream in case a failure occurs.
+		"-attempt_recovery", "1", "-recover_any_error", "1", "-recovery_wait_time", "1", "-flags", "+global_header",
+		"-g", strconv.Itoa(s.streamParams.fps * 2),
+		"-keyint_min", strconv.Itoa(s.streamParams.fps * 2), "-force_key_frames", "expr:gte(t,n_forced*2)",
+		"-flvflags", "no_duration_filesize"}
+}
+
 func twitchIngestLink() (string, error) {
 	type ResponseBody struct {
 		Ingests []struct {
@@ -1034,6 +1157,29 @@ func twitchIngestLink() (string, error) {
 	db.Close()
 
 	ingestLink := strings.Replace(responseBody.Ingests[0].URL, "{stream_key}", streamKey, 1)
+
+	return ingestLink, nil
+}
+
+func youtubeIngestLink() (string, error) {
+
+	// Get stream key and stream URL
+	db, err := sql.Open("sqlite3", "files/data.db")
+	if err != nil {
+		return "", err
+	}
+
+	var streamKey, streamUrl string
+	err = db.QueryRow("SELECT stream_key, stream_url FROM youtube_params WHERE user_id=1").Scan(&streamKey, &streamUrl)
+	if err != nil {
+		return "", err
+	}
+
+	db.Close()
+
+	fmt.Println(streamUrl)
+
+	ingestLink := streamUrl + "/" + streamKey
 
 	return ingestLink, nil
 }
