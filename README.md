@@ -1,6 +1,6 @@
 # Twitcher
 
-Twitcher is a 24/7 Twitch broadcasting software with a web GUI. It can play video, sound and overlay layouts on top of the video.
+Twitcher is a 24/7 Twitch and Youtube broadcasting software with a web GUI. It can play video, sound and overlay layouts on top of the video.
 
 ## Project status
 
@@ -104,10 +104,10 @@ docker build . -t joaquinolivero/twitcher
 
 ## TODO
 
-- Implement all Twitch alerts. Right now only alerts for new follows and subs are implemented.
-- Select which moods and genres to scrape from ncs.io.
-- Separately upload audio files.
-- Add option to create and manipulate audio playlists.
-- Add YouTube as a stream option.
-- Add option to change the text font in the song overlay.
-- Add flag to change default ports for the grpc and static files servers.
+- [ ] Implement all Twitch alerts. Right now only alerts for new follows and subs are implemented.
+- [ ] Select which moods and genres to scrape from ncs.io.
+- [ ] Separately upload audio files.
+- [ ] Add option to create and manipulate audio playlists.
+- [x] Add YouTube as a stream option.
+- [ ] Add option to change the text font in the song overlay.
+- [ ] Add flag to change default ports for the grpc and static files servers.
