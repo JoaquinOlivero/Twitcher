@@ -6,9 +6,10 @@ import { Dispatch, SetStateAction, useState } from "react"
 type Props = {
     streamUrl: string
     setStreamUrl: Dispatch<SetStateAction<string>>
+    setIsEnabled: Dispatch<SetStateAction<boolean>>
 }
 
-const StreamUrl = ({ streamUrl, setStreamUrl }: Props) => {
+const StreamUrl = ({ streamUrl, setStreamUrl, setIsEnabled }: Props) => {
     const [isStreamUrl, setIsStreamUrl] = useState<boolean | undefined>(streamUrl && streamUrl?.length > 0 ? true : false)
     const [isWaiting, setIsWaiting] = useState<boolean>(false)
 
@@ -37,6 +38,7 @@ const StreamUrl = ({ streamUrl, setStreamUrl }: Props) => {
         if (status && status.url == undefined) {
             setStreamUrl("")
             setIsStreamUrl(false)
+            setIsEnabled(false)
         } else if (status && status.url) {
             setStreamUrl(status.url)
             setIsStreamUrl(true)

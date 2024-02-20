@@ -6,9 +6,10 @@ import { Dispatch, SetStateAction, useState } from "react"
 type Props = {
     isStreamKey: boolean
     setIsStreamKey: Dispatch<SetStateAction<boolean>>
+    setIsEnabled: Dispatch<SetStateAction<boolean>>
 }
 
-const StreamKey = ({ isStreamKey, setIsStreamKey }: Props) => {
+const StreamKey = ({ isStreamKey, setIsStreamKey, setIsEnabled }: Props) => {
     const [streamKey, setStreamKey] = useState<string>(isStreamKey ? "000000000000000000000000000000000000000000000000000000" : "")
     const [isWaiting, setIsWaiting] = useState<boolean>(false)
 
@@ -40,6 +41,7 @@ const StreamKey = ({ isStreamKey, setIsStreamKey }: Props) => {
         } else {
             setStreamKey("")
             setIsStreamKey(false)
+            setIsEnabled(false)
         }
     }
 

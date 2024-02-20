@@ -54,29 +54,6 @@ func (s *MainServer) CheckYoutubeParams(ctx context.Context, in *google_protobuf
 	return &pb.YoutubeParams{IsKeyActive: isKeyActive, Url: streamUrl, Enabled: enable}, nil
 }
 
-func (s *MainServer) CheckYoutubeStreamKey(ctx context.Context, in *google_protobuf.Empty) (*pb.YoutubeStreamKey, error) {
-
-	db, err := sql.Open("sqlite3", "files/data.db")
-	if err != nil {
-		return nil, err
-	}
-
-	defer db.Close()
-
-	var streamKey string
-
-	err = db.QueryRow("SELECT stream_key FROM youtube_params WHERE user_id=1").Scan(&streamKey)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			log.Println(err)
-			return &pb.YoutubeStreamKey{Active: false}, nil
-		}
-		return nil, err
-	}
-
-	return &pb.YoutubeStreamKey{Active: true}, nil
-}
-
 func (s *MainServer) DeleteYoutubeStreamKey(ctx context.Context, in *google_protobuf.Empty) (*google_protobuf.Empty, error) {
 
 	db, err := sql.Open("sqlite3", "files/data.db")
@@ -114,29 +91,6 @@ func (s *MainServer) YoutubeSaveStreamUrl(ctx context.Context, in *pb.YoutubeStr
 	return &google_protobuf.Empty{}, nil
 }
 
-func (s *MainServer) CheckYoutubeStreamUrl(ctx context.Context, in *google_protobuf.Empty) (*pb.YoutubeStreamUrl, error) {
-
-	db, err := sql.Open("sqlite3", "files/data.db")
-	if err != nil {
-		return nil, err
-	}
-
-	defer db.Close()
-
-	var streamUrl string
-
-	err = db.QueryRow("SELECT stream_url FROM youtube_params WHERE user_id=1").Scan(&streamUrl)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			log.Println(err)
-			return &pb.YoutubeStreamUrl{Active: false}, nil
-		}
-		return nil, err
-	}
-
-	return &pb.YoutubeStreamUrl{Active: true, Url: streamUrl}, nil
-}
-
 func (s *MainServer) DeleteYoutubeStreamUrl(ctx context.Context, in *google_protobuf.Empty) (*google_protobuf.Empty, error) {
 
 	db, err := sql.Open("sqlite3", "files/data.db")
@@ -147,6 +101,24 @@ func (s *MainServer) DeleteYoutubeStreamUrl(ctx context.Context, in *google_prot
 	defer db.Close()
 
 	_, err = db.Exec("UPDATE youtube_params SET stream_url=$1 WHERE user_id=1", "")
+	if err != nil {
+		log.Println(err)
+		return &google_protobuf.Empty{}, err
+	}
+
+	return &google_protobuf.Empty{}, nil
+}
+
+func (s *MainServer) ManageYoutube(ctx context.Context, in *pb.YoutubeParams) (*google_protobuf.Empty, error) {
+
+	db, err := sql.Open("sqlite3", "files/data.db")
+	if err != nil {
+		return nil, err
+	}
+
+	defer db.Close()
+
+	_, err = db.Exec("UPDATE youtube_params SET enable=$1 WHERE user_id=1", in.Enabled)
 	if err != nil {
 		log.Println(err)
 		return &google_protobuf.Empty{}, err

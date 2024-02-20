@@ -42,12 +42,11 @@ const (
 	Main_StreamParameters_FullMethodName           = "/service.Main/StreamParameters"
 	Main_SaveStreamParameters_FullMethodName       = "/service.Main/SaveStreamParameters"
 	Main_YoutubeSaveStreamKey_FullMethodName       = "/service.Main/YoutubeSaveStreamKey"
-	Main_CheckYoutubeStreamKey_FullMethodName      = "/service.Main/CheckYoutubeStreamKey"
 	Main_DeleteYoutubeStreamKey_FullMethodName     = "/service.Main/DeleteYoutubeStreamKey"
 	Main_YoutubeSaveStreamUrl_FullMethodName       = "/service.Main/YoutubeSaveStreamUrl"
-	Main_CheckYoutubeStreamUrl_FullMethodName      = "/service.Main/CheckYoutubeStreamUrl"
 	Main_DeleteYoutubeStreamUrl_FullMethodName     = "/service.Main/DeleteYoutubeStreamUrl"
 	Main_CheckYoutubeParams_FullMethodName         = "/service.Main/CheckYoutubeParams"
+	Main_ManageYoutube_FullMethodName              = "/service.Main/ManageYoutube"
 	Main_GetOverlays_FullMethodName                = "/service.Main/GetOverlays"
 	Main_BackgroundVideos_FullMethodName           = "/service.Main/BackgroundVideos"
 	Main_UploadVideo_FullMethodName                = "/service.Main/UploadVideo"
@@ -80,12 +79,11 @@ type MainClient interface {
 	StreamParameters(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*StreamParametersResponse, error)
 	SaveStreamParameters(ctx context.Context, in *SaveStreamParametersRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	YoutubeSaveStreamKey(ctx context.Context, in *YoutubeStreamKey, opts ...grpc.CallOption) (*empty.Empty, error)
-	CheckYoutubeStreamKey(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*YoutubeStreamKey, error)
 	DeleteYoutubeStreamKey(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error)
 	YoutubeSaveStreamUrl(ctx context.Context, in *YoutubeStreamUrl, opts ...grpc.CallOption) (*empty.Empty, error)
-	CheckYoutubeStreamUrl(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*YoutubeStreamUrl, error)
 	DeleteYoutubeStreamUrl(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error)
 	CheckYoutubeParams(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*YoutubeParams, error)
+	ManageYoutube(ctx context.Context, in *YoutubeParams, opts ...grpc.CallOption) (*empty.Empty, error)
 	GetOverlays(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Overlays, error)
 	BackgroundVideos(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*BackgroundVideosResponse, error)
 	UploadVideo(ctx context.Context, opts ...grpc.CallOption) (Main_UploadVideoClient, error)
@@ -298,15 +296,6 @@ func (c *mainClient) YoutubeSaveStreamKey(ctx context.Context, in *YoutubeStream
 	return out, nil
 }
 
-func (c *mainClient) CheckYoutubeStreamKey(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*YoutubeStreamKey, error) {
-	out := new(YoutubeStreamKey)
-	err := c.cc.Invoke(ctx, Main_CheckYoutubeStreamKey_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *mainClient) DeleteYoutubeStreamKey(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
 	out := new(empty.Empty)
 	err := c.cc.Invoke(ctx, Main_DeleteYoutubeStreamKey_FullMethodName, in, out, opts...)
@@ -325,15 +314,6 @@ func (c *mainClient) YoutubeSaveStreamUrl(ctx context.Context, in *YoutubeStream
 	return out, nil
 }
 
-func (c *mainClient) CheckYoutubeStreamUrl(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*YoutubeStreamUrl, error) {
-	out := new(YoutubeStreamUrl)
-	err := c.cc.Invoke(ctx, Main_CheckYoutubeStreamUrl_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *mainClient) DeleteYoutubeStreamUrl(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
 	out := new(empty.Empty)
 	err := c.cc.Invoke(ctx, Main_DeleteYoutubeStreamUrl_FullMethodName, in, out, opts...)
@@ -346,6 +326,15 @@ func (c *mainClient) DeleteYoutubeStreamUrl(ctx context.Context, in *empty.Empty
 func (c *mainClient) CheckYoutubeParams(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*YoutubeParams, error) {
 	out := new(YoutubeParams)
 	err := c.cc.Invoke(ctx, Main_CheckYoutubeParams_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mainClient) ManageYoutube(ctx context.Context, in *YoutubeParams, opts ...grpc.CallOption) (*empty.Empty, error) {
+	out := new(empty.Empty)
+	err := c.cc.Invoke(ctx, Main_ManageYoutube_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -439,12 +428,11 @@ type MainServer interface {
 	StreamParameters(context.Context, *empty.Empty) (*StreamParametersResponse, error)
 	SaveStreamParameters(context.Context, *SaveStreamParametersRequest) (*empty.Empty, error)
 	YoutubeSaveStreamKey(context.Context, *YoutubeStreamKey) (*empty.Empty, error)
-	CheckYoutubeStreamKey(context.Context, *empty.Empty) (*YoutubeStreamKey, error)
 	DeleteYoutubeStreamKey(context.Context, *empty.Empty) (*empty.Empty, error)
 	YoutubeSaveStreamUrl(context.Context, *YoutubeStreamUrl) (*empty.Empty, error)
-	CheckYoutubeStreamUrl(context.Context, *empty.Empty) (*YoutubeStreamUrl, error)
 	DeleteYoutubeStreamUrl(context.Context, *empty.Empty) (*empty.Empty, error)
 	CheckYoutubeParams(context.Context, *empty.Empty) (*YoutubeParams, error)
+	ManageYoutube(context.Context, *YoutubeParams) (*empty.Empty, error)
 	GetOverlays(context.Context, *empty.Empty) (*Overlays, error)
 	BackgroundVideos(context.Context, *empty.Empty) (*BackgroundVideosResponse, error)
 	UploadVideo(Main_UploadVideoServer) error
@@ -522,23 +510,20 @@ func (UnimplementedMainServer) SaveStreamParameters(context.Context, *SaveStream
 func (UnimplementedMainServer) YoutubeSaveStreamKey(context.Context, *YoutubeStreamKey) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method YoutubeSaveStreamKey not implemented")
 }
-func (UnimplementedMainServer) CheckYoutubeStreamKey(context.Context, *empty.Empty) (*YoutubeStreamKey, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CheckYoutubeStreamKey not implemented")
-}
 func (UnimplementedMainServer) DeleteYoutubeStreamKey(context.Context, *empty.Empty) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteYoutubeStreamKey not implemented")
 }
 func (UnimplementedMainServer) YoutubeSaveStreamUrl(context.Context, *YoutubeStreamUrl) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method YoutubeSaveStreamUrl not implemented")
 }
-func (UnimplementedMainServer) CheckYoutubeStreamUrl(context.Context, *empty.Empty) (*YoutubeStreamUrl, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CheckYoutubeStreamUrl not implemented")
-}
 func (UnimplementedMainServer) DeleteYoutubeStreamUrl(context.Context, *empty.Empty) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteYoutubeStreamUrl not implemented")
 }
 func (UnimplementedMainServer) CheckYoutubeParams(context.Context, *empty.Empty) (*YoutubeParams, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckYoutubeParams not implemented")
+}
+func (UnimplementedMainServer) ManageYoutube(context.Context, *YoutubeParams) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ManageYoutube not implemented")
 }
 func (UnimplementedMainServer) GetOverlays(context.Context, *empty.Empty) (*Overlays, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOverlays not implemented")
@@ -961,24 +946,6 @@ func _Main_YoutubeSaveStreamKey_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Main_CheckYoutubeStreamKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MainServer).CheckYoutubeStreamKey(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Main_CheckYoutubeStreamKey_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MainServer).CheckYoutubeStreamKey(ctx, req.(*empty.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Main_DeleteYoutubeStreamKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(empty.Empty)
 	if err := dec(in); err != nil {
@@ -1015,24 +982,6 @@ func _Main_YoutubeSaveStreamUrl_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Main_CheckYoutubeStreamUrl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MainServer).CheckYoutubeStreamUrl(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Main_CheckYoutubeStreamUrl_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MainServer).CheckYoutubeStreamUrl(ctx, req.(*empty.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Main_DeleteYoutubeStreamUrl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(empty.Empty)
 	if err := dec(in); err != nil {
@@ -1065,6 +1014,24 @@ func _Main_CheckYoutubeParams_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MainServer).CheckYoutubeParams(ctx, req.(*empty.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Main_ManageYoutube_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(YoutubeParams)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MainServer).ManageYoutube(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Main_ManageYoutube_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MainServer).ManageYoutube(ctx, req.(*YoutubeParams))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1245,10 +1212,6 @@ var Main_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Main_YoutubeSaveStreamKey_Handler,
 		},
 		{
-			MethodName: "CheckYoutubeStreamKey",
-			Handler:    _Main_CheckYoutubeStreamKey_Handler,
-		},
-		{
 			MethodName: "DeleteYoutubeStreamKey",
 			Handler:    _Main_DeleteYoutubeStreamKey_Handler,
 		},
@@ -1257,16 +1220,16 @@ var Main_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Main_YoutubeSaveStreamUrl_Handler,
 		},
 		{
-			MethodName: "CheckYoutubeStreamUrl",
-			Handler:    _Main_CheckYoutubeStreamUrl_Handler,
-		},
-		{
 			MethodName: "DeleteYoutubeStreamUrl",
 			Handler:    _Main_DeleteYoutubeStreamUrl_Handler,
 		},
 		{
 			MethodName: "CheckYoutubeParams",
 			Handler:    _Main_CheckYoutubeParams_Handler,
+		},
+		{
+			MethodName: "ManageYoutube",
+			Handler:    _Main_ManageYoutube_Handler,
 		},
 		{
 			MethodName: "GetOverlays",

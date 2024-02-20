@@ -937,3 +937,32 @@ export const checkYoutubeParams = async () => {
 
     return status
 }
+
+export const manageYoutube = async (enable: boolean) => {
+    const deadline = new Date()
+    deadline.setSeconds(deadline.getSeconds() + 5)
+
+    const success: boolean = await new Promise(resolve => {
+        client.waitForReady(deadline, (err) => {
+            if (err) {
+                console.log(err)
+                resolve(false)
+            }
+
+            client.ManageYoutube({enabled: enable},(err, res) => {
+                if (err) {
+                    console.log(err)
+                    resolve(false)
+                }
+                if (res !== undefined) {
+                    resolve(true)
+                } else {
+                    resolve(false)
+                }
+            })
+
+        })
+    })
+
+    return success   
+}
